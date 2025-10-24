@@ -1,143 +1,95 @@
-import React, { useEffect, useRef, useState } from "react";
-import { geocodeSearch, type PlaceSuggestion } from "../services/ors";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { geocodeSearch } from '../services/ors';
+import type { PlaceSuggestion } from '../types/route';
 
-type Props = {
-  placeholder?: string;
-  onSelect: (place: PlaceSuggestion) => void;
-};
+type Mode = 'A' | 'B';
 
-export default function SearchBar({ placeholder = "Search here", onSelect }: Props) {
-  const [q, setQ] = useState("");
-  const [loading, setLoading] = useState(false);
+interface Props {
+  onSelectA: (p: PlaceSuggestion) => void;
+  onSelectB: (p: PlaceSuggestion) => void;
+  originLabel?: string;
+  destinationLabel?: string;
+}
+
+export default function SearchBar({ onSelectA, onSelectB, originLabel, destinationLabel }: Props) {
+  const [query, setQuery] = useState('');
   const [results, setResults] = useState<PlaceSuggestion[]>([]);
-  const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
-  const boxRef = useRef<HTMLDivElement>(null);
-
-  const debouncedQ = useDebounce(q, 300);
-
-  useEffect(() => {
-    let active = true;
-    if (!debouncedQ) { setResults([]); setPage(1); return; }
-    setLoading(true);
-    geocodeSearch(debouncedQ, 5, 1)
-      .then((r) => { if (active) { setResults(r); setPage(1); setOpen(true); } })
-      .catch(console.error)
-      .finally(() => active && setLoading(false));
-    return () => { active = false; };
-  }, [debouncedQ]);
+  const [mode, setMode] = useState<Mode>('A');
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!containerRef.current) return;
+      if (!containerRef.current.contains(e.target as Node)) setOpen(false);
     };
-    window.addEventListener("click", onClick);
-    return () => window.removeEventListener("click", onClick);
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
   }, []);
 
-  const loadMore = async () => {
-    const next = page + 1;
-    setLoading(true);
-    try {
-      const more = await geocodeSearch(debouncedQ, 5, next);
-      setResults((r) => [...r, ...more]);
-      setPage(next);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    const id = setTimeout(async () => {
+      if (query.trim().length < 2) {
+        setResults([]);
+        return;
+      }
+      const r = await geocodeSearch(query.trim());
+      setResults(r);
+      setOpen(true);
+    }, 200);
+    return () => clearTimeout(id);
+  }, [query]);
+
+  const placeholder = useMemo(() => (mode === 'A' ? 'Search origin (A)…' : 'Search destination (B)…'), [mode]);
+
+  const pick = (p: PlaceSuggestion) => {
+    if (mode === 'A') onSelectA(p); else onSelectB(p);
+    setQuery('');
+    setResults([]);
+    setOpen(false);
+    // After picking A, guide the user to pick B next
+    if (mode === 'A') setMode('B');
   };
 
   return (
-    <div ref={boxRef} style={{ position: "relative", width: 520 }}>
-      <div style={searchBoxStyle}>
+    <div ref={containerRef} className="absolute top-4 left-1/2 -translate-x-1/2 w-[520px] max-w-[92vw] z-[500]">
+      <div className="bg-white/95 backdrop-blur rounded-2xl shadow-xl p-2 flex items-center gap-2">
+        <button
+          className={`px-3 py-1 rounded-xl text-sm border ${mode === 'A' ? 'bg-black text-white' : ''}`}
+          onClick={() => setMode('A')}
+          title="Set next selection as Origin (A)"
+        >A</button>
+        <button
+          className={`px-3 py-1 rounded-xl text-sm border ${mode === 'B' ? 'bg-black text-white' : ''}`}
+          onClick={() => setMode('B')}
+          title="Set next selection as Destination (B)"
+        >B</button>
         <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onFocus={() => q && setOpen(true)}
+          className="flex-1 px-3 py-2 rounded-xl border outline-none"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
-          style={inputStyle}
         />
-        <button aria-label="search" style={iconBtnStyle}>🔍</button>
+        <div className="text-xs text-gray-500 pr-2 select-none">
+          {originLabel ? `A: ${originLabel}` : 'A: —'}
+          {' '}
+          {destinationLabel ? `· B: ${destinationLabel}` : '· B: —'}
+        </div>
       </div>
 
       {open && results.length > 0 && (
-        <div style={dropdownStyle}>
-          {results.map((r) => (
+        <div className="mt-2 bg-white rounded-2xl shadow-xl overflow-hidden border">
+          {results.map(r => (
             <button
               key={r.id}
-              style={itemStyle}
-              onClick={() => { onSelect(r); setOpen(false); }}
+              className="w-full text-left px-3 py-2 hover:bg-gray-50"
+              onClick={() => pick(r)}
             >
-              <span style={{ marginRight: 8 }}>📍</span>
               {r.label}
             </button>
           ))}
-          <div style={{ padding: 12, textAlign: "center" }}>
-            <button onClick={loadMore} disabled={loading} style={loadMoreBtn}>
-              {loading ? "Loading..." : "Load more"}
-            </button>
-          </div>
         </div>
       )}
     </div>
   );
 }
-
-function useDebounce<T>(value: T, ms = 300) {
-  const [v, setV] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setV(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
-  return v;
-}
-
-// ——— inline styles mínimos (look similar al diseño) ———
-const searchBoxStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  background: "#fff",
-  padding: "12px 14px",
-  borderRadius: 12,
-  boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
-};
-const inputStyle: React.CSSProperties = {
-  flex: 1,
-  border: "none",
-  outline: "none",
-  fontSize: 16,
-};
-const iconBtnStyle: React.CSSProperties = {
-  background: "transparent",
-  border: "none",
-  cursor: "pointer",
-  fontSize: 18,
-};
-const dropdownStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 56,
-  left: 0,
-  right: 0,
-  background: "#fff",
-  borderRadius: 16,
-  boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
-  overflow: "hidden",
-};
-const itemStyle: React.CSSProperties = {
-  width: "100%",
-  textAlign: "left",
-  padding: "14px 16px",
-  border: "none",
-  background: "white",
-  cursor: "pointer",
-  borderBottom: "1px solid #f0f0f0",
-};
-const loadMoreBtn: React.CSSProperties = {
-  padding: "10px 16px",
-  borderRadius: 20,
-  border: "none",
-  background: "#2f6df6",
-  color: "white",
-  cursor: "pointer",
-};
