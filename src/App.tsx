@@ -1,5 +1,5 @@
-import MapView from "./components/MapView";
+import AppRouter from "./routes/AppRouter";
 
 export default function App() {
-  return <MapView />;
+  return <AppRouter />;
 }
