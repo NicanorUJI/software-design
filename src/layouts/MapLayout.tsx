@@ -3,10 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import MapView from '../components/MapView';
 import RoutePanel from '../components/RoutePanel';
 import SearchBar from '../components/SearchBar';
+import SidePanel from '../components/SidePanel';
 import type { PlaceSuggestion, RouteResult, TravelProfile } from '../types/route';
 import { getDirections } from '../services/ors';
 import { calculateCalories, calculateFuelCost } from '../utils/cost';
 import { getEuroPerLiter, type FuelType } from '../services/fuel';
+import { getPreferences } from '../services/repos/preferencesRepo';
 
 export default function MapLayout() {
   const [origin, setOrigin] = useState<PlaceSuggestion | null>(null);
@@ -19,12 +21,22 @@ export default function MapLayout() {
   const [fuelType, setFuelType] = useState<FuelType>('gasoline95');
   const [euroPerLiter, setEuroPerLiter] = useState<number | null>(null);
 
-  // Approximate default consumption values (L/100km)
   const defaultConsumption: Record<FuelType, number> = {
     gasoline95: 6.5,
     gasoline98: 7.0,
     diesel: 5.5,
   };
+
+  // load preferences (if exist)
+  useEffect(() => {
+    (async () => {
+      const p = await getPreferences();
+      if (p) {
+        setProfile(p.defaultProfile);
+        setFuelType(p.defaultFuelType);
+      }
+    })();
+  }, []);
 
   const canRoute = useMemo(() => origin && destination, [origin, destination]);
 
@@ -62,7 +74,7 @@ export default function MapLayout() {
     if (origin && destination) fetchRoute();
   }, [origin, destination, fetchRoute]);
 
-  // Fetch fuel price whenever type changes
+  // get fuel price when needed
   useEffect(() => {
     if (profile !== 'driving-car') return;
     let mounted = true;
@@ -72,7 +84,6 @@ export default function MapLayout() {
     return () => { mounted = false; };
   }, [fuelType, profile]);
 
-  // Calculate cost text
   const costText = useMemo(() => {
     if (!route) return null;
     const km = route.summary.distanceKm;
@@ -102,6 +113,7 @@ export default function MapLayout() {
         destinationLabel={destination?.label}
       />
 
+      {/* Right side: route panel */}
       <div className="absolute top-4 right-4 max-w-sm w-[340px] space-y-2">
         {profile === 'driving-car' && (
           <div className="bg-white/90 rounded-2xl shadow p-2 text-sm flex gap-2 items-center">
@@ -132,7 +144,20 @@ export default function MapLayout() {
         />
       </div>
 
-      <MapView
+      {/* Left side: persistence side panel */}
+      <div className="absolute top-4 left-4">
+        <SidePanel
+          currentOrigin={origin ? { label: origin.label, position: origin.position } : null}
+          currentDestination={destination ? { label: destination.label, position: destination.position } : null}
+          currentRoute={route ? { distanceKm: route.summary.distanceKm, durationMin: route.summary.durationMin, profile } : null}
+          onApplyPreferences={(p) => {
+            setProfile(p.defaultProfile);
+            setFuelType(p.defaultFuelType);
+          }}
+        />
+      </div>
+
+    <MapView
         origin={origin?.position ?? null}
         destination={destination?.position ?? null}
         route={route}
