@@ -8,8 +8,8 @@ import SidePanel from '../components/SidePanel';
 import type { PlaceSuggestion, RouteResult, TravelProfile } from '../types/route';
 import type { Vehicle, FuelType } from '../types/domain';
 
-import { getDirections } from '../services/ors';
-import { calculateCalories, calculateFuelCost } from '../utils/cost';
+// import { getDirections } from '../services/ors';
+import { getRoutingService } from '../services/serviceRegistry';
 import { getEuroPerLiter } from '../services/fuel';
 
 import { addVehicle, listVehicles, removeVehicle } from '../services/repos/vehiclesRepo';
@@ -136,10 +136,11 @@ export default function MapLayout() {
     setError(null);
 
     try {
-      const result = await getDirections({ 
-        profile, 
-        from: origin.position, 
-        to: destination.position 
+      const routing = getRoutingService();
+      const result = await routing.getDirections({
+        profile,
+        from: origin.position,
+        to: destination.position,
       });
       setRoute(result);
     } catch (e: any) {
