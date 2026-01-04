@@ -1,5 +1,5 @@
 // src/services/fuel.ts
-// Fetches average fuel price in Spain from the Ministerio de Industria API.
+// Fetches average fuel price in Spain.
 
 export type FuelType = 'gasoline95' | 'gasoline98' | 'diesel';
 
