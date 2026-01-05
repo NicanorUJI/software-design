@@ -1,102 +1,59 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 import SearchBar from '../components/SearchBar';
 import MapView from '../components/MapView';
 import RoutePanel from '../components/RoutePanel';
 import SidePanel from '../components/SidePanel';
 import HamburgerMenu from '../components/HamburgerMenu';
-import { SearchBarViewModel } from '../viewModels/SearchBarViewModel';
-import { SidePanelViewModel } from '../viewModels/SidePanelViewModel';
-import { useNavigate } from 'react-router-dom';
+
 import { useViewModel } from '../viewModels/base/useViewModel';
-import { TripPlannerViewModel } from '../viewModels/TripPlannerViewModel';
-import { getTripPlannerFacade, getRoutingService } from '../services/serviceRegistry';
-import { listVehicles, addVehicle, removeVehicle } from '../services/repos/vehiclesRepo';
-import { addPlace, listPlaces, removePlace } from '../services/repos/placesRepo';
-import { addRoute, listRoutes, removeRoute } from '../services/repos/routesRepo';
-import { getPreferences, setPreferences, updatePreferences } from '../services/repos/preferencesRepo';
+import {
+  createSearchBarViewModel,
+  createSidePanelViewModel,
+  createTripPlannerViewModel,
+} from '../composition/mapLayoutComposition';
 
 import { useAuth } from '../services/AuthContext';
 
 export default function MapLayout() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const uid = user?.uid;
 
   const [sideOpen, setSideOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
 
-  const navigate = useNavigate();
+  // Guard de auth
+  useEffect(() => {
+    if (!loading && !user) navigate('/login');
+  }, [loading, user, navigate]);
 
-  const tripVm = useMemo(() => {
-    if (!uid) throw new Error('No user');
-
-    return new TripPlannerViewModel(
-      getTripPlannerFacade(),
-      {
-        list: () => listVehicles(uid),
-        add: (v) => addVehicle(uid, v),
-        remove: (id) => removeVehicle(uid, id),
-      },
-      { get: () => getPreferences(uid) }
+  // Mientras auth carga, evita instanciar VMs.
+  if (loading) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center">
+        <div className="text-sm text-gray-600">Loading...</div>
+      </div>
     );
-  }, [uid]);
+  }
 
+  if (!uid) return null;
+
+  const tripVm = useMemo(() => createTripPlannerViewModel(uid), [uid]);
   const trip = useViewModel(tripVm);
 
   useEffect(() => {
     return () => tripVm.dispose();
   }, [tripVm]);
 
-  const searchBarVm = useMemo(() => {
-    return new SearchBarViewModel(getRoutingService(), tripVm.selectOrigin, tripVm.selectDestination);
-  }, [tripVm]);
+  const searchBarVm = useMemo(() => createSearchBarViewModel(tripVm), [tripVm]);
 
   useEffect(() => {
     return () => searchBarVm.dispose();
   }, [searchBarVm]);
 
-  const sidePanelVm = useMemo(() => {
-    if (!uid) throw new Error('No user');
-
-    return new SidePanelViewModel(
-      // Places
-      {
-        list: () => listPlaces(uid),
-        add: (p) => addPlace(uid, p),
-        remove: (id) => removePlace(uid, id),
-      },
-      // Routes
-      {
-        list: () => listRoutes(uid),
-        add: (r) => addRoute(uid, r),
-        remove: (id) => removeRoute(uid, id),
-      },
-      // Preferences
-      {
-        get: () => getPreferences(uid),
-        set: (p) => setPreferences(uid, p),
-        update: (patch) => updatePreferences(uid, patch as any),
-      },
-      // Vehicles (delegado al TripPlannerVM)
-      {
-        add: tripVm.addNewVehicle,
-        remove: tripVm.removeExistingVehicle,
-      },
-      (p) => {
-        tripVm.changeProfile(p.defaultProfile);
-        tripVm.setFuelType(p.defaultFuelType);
-      },
-      (p) => tripVm.selectOrigin(p as any),
-      (p) => tripVm.selectDestination(p as any),
-      () => tripVm.planTrip()
-    );
-  }, [
-    uid,
-    tripVm,
-    tripVm.addNewVehicle,
-    tripVm.removeExistingVehicle,
-    tripVm.changeProfile,
-    tripVm.setFuelType,
-  ]);
+  const sidePanelVm = useMemo(() => createSidePanelViewModel(uid, tripVm), [uid, tripVm]);
 
   useEffect(() => {
     return () => sidePanelVm.dispose?.();

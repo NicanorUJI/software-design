@@ -20,7 +20,6 @@ export type PlanTripRequest = {
 export type PlanTripResult = {
   route: RouteResult;
   cost: CostResult | null;
-  costText: string | null;
   euroPerLiter: number | null;
 };
 
@@ -36,7 +35,6 @@ export type EstimateCostRequest = {
 
 export type EstimateCostResult = {
   cost: CostResult | null;
-  costText: string | null;
   euroPerLiter: number | null;
 };
 
@@ -78,7 +76,6 @@ export class TripPlannerFacade {
     return {
       route,
       cost: costRes.cost,
-      costText: costRes.costText,
       euroPerLiter: costRes.euroPerLiter,
     };
   }
@@ -101,10 +98,7 @@ export class TripPlannerFacade {
       euroPerLiter,
     });
 
-    // UI-friendly text
-    const costText = this.formatCostText(req.profile, cost);
-
-    return { cost, costText, euroPerLiter };
+    return { cost, euroPerLiter };
   }
 
   private resolveFuelInputs(req: { vehicle?: Vehicle | null; fuelType?: FuelType; defaultConsumption: Record<FuelType, number> }) {
@@ -129,16 +123,5 @@ export class TripPlannerFacade {
     } catch {
       return null;
     }
-  }
-
-  private formatCostText(profile: TravelProfile, cost: CostResult | null): string | null {
-    if (!cost) return profile === 'driving-car' ? 'Fuel price unavailable.' : null;
-
-    if (cost.kind === 'fuel') {
-      const suffix = cost.source === 'default' ? ' (estimate)' : '';
-      return `Fuel: ~€${cost.euros.toFixed(2)} (≈ ${cost.liters.toFixed(2)} L @ €${cost.euroPerLiter.toFixed(2)}/L)${suffix}`;
-    }
-
-    return `Energy: ~${cost.kcal} kcal`;
   }
 }

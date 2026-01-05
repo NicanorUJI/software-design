@@ -4,6 +4,7 @@ import type { FuelType, Vehicle } from '../types/domain';
 import type { TripPlannerFacade } from '../domain/facades/TripPlannerFacade';
 import type { Preferences } from '../types/domain';
 import { ViewModel } from './base/ViewModel';
+import { formatCostText } from '../utils/formatCostText';
 
 export type TripPlannerState = {
   origin: PlaceSuggestion | null;
@@ -155,6 +156,9 @@ export class TripPlannerViewModel extends ViewModel<TripPlannerState> {
       costText: null,
       error: null,
     });
+
+    // If a route is already on screen, update the estimate immediately.
+    this.recalcCostIfPossible();
   };
 
   addNewVehicle = async (v: Omit<Vehicle, 'id' | 'createdAt'>) => {
@@ -198,7 +202,7 @@ export class TripPlannerViewModel extends ViewModel<TripPlannerState> {
 
       this.setState({
         route: result.route,
-        costText: result.costText,
+        costText: formatCostText(s.profile, result.cost),
         loading: false,
       });
     } catch (e: any) {
@@ -222,23 +226,23 @@ export class TripPlannerViewModel extends ViewModel<TripPlannerState> {
     const route = s.route;
 
     void (async () => {
-        try {
+      try {
         const res = await this.facade.estimateCost({
-            profile: s.profile,
-            distanceKm: route.summary.distanceKm,
-            vehicle: this.selectedVehicle,
-            fuelType: s.fuelType,
-            defaultConsumption: this.defaultConsumption,
+          profile: s.profile,
+          distanceKm: route.summary.distanceKm,
+          vehicle: this.selectedVehicle,
+          fuelType: s.fuelType,
+          defaultConsumption: this.defaultConsumption,
         });
 
         if (token !== this.costToken) return;
-        this.setState({ costText: res.costText });
-        } catch {
+        this.setState({ costText: formatCostText(s.profile, res.cost) });
+      } catch {
         if (token !== this.costToken) return;
         this.setState({ costText: null });
-        }
+      }
     })();
-}
+  }
 
   resetTrip = () => {
     this.planToken++;
