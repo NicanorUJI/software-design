@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import type { LatLng, RouteResult } from '../types/route';
 
@@ -24,7 +24,10 @@ export default function MapView({ origin, destination, route }: Props) {
   const center = useMemo(() => ({ lat: 39.98, lng: -0.05 }), []);
 
   return (
-    <MapContainer center={center} zoom={12} className='h-full w-full'>
+    <MapContainer center={center} zoom={12} className='h-full w-full' zoomControl={false}>
+
+      <ZoomControl position='bottomleft' />
+
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

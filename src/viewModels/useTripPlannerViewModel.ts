@@ -78,6 +78,15 @@ export function useTripPlannerViewModel() {
     setError(null);
   }, []);
 
+  const resetTrip = useCallback(() => {
+    setOrigin(null);
+    setDestination(null);
+    setRoute(null);
+    setCostText(null);
+    setError(null);
+    setLoading(false);
+  }, []);
+
   const changeVehicle = useCallback(
     (id: string | null) => {
       setSelectedVehicleId(id);
@@ -149,11 +158,10 @@ export function useTripPlannerViewModel() {
     changeProfile,
     setFuelType,
     changeVehicle,
-
     planTrip,
-
     addNewVehicle,
     removeExistingVehicle,
+    resetTrip,
 
     // helper
     selectedVehicle,

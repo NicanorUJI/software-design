@@ -9,6 +9,7 @@ import { useTripPlannerViewModel } from '../viewModels/useTripPlannerViewModel';
 export default function MapLayout() {
   const vm = useTripPlannerViewModel();
   const [sideOpen, setSideOpen] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
 
   return (
     <div className="relative w-screen h-screen overflow-hidden">
@@ -21,22 +22,27 @@ export default function MapLayout() {
         />
       </div>
 
-      {/* Top-left hamburger */}
+      {/* hamburger */}
       <div className="absolute top-4 left-4 z-50">
         <HamburgerMenu onClick={() => setSideOpen(true)} />
       </div>
 
-      {/* Search bar (top center) */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
+      {/* Search bar */}
+      <div className='absolute top-4 left-1/2 -translate-x-1/2 z-[500]'>
         <SearchBar
           onSelectA={vm.selectOrigin}
           onSelectB={vm.selectDestination}
           originLabel={vm.origin?.label}
           destinationLabel={vm.destination?.label}
+          onCalculateRoute={vm.planTrip}
+          canCalculateRoute={vm.canRoute}
+          loading={vm.loading}
+          error={vm.error}
+          resetKey={resetKey}
         />
       </div>
 
-      {/* Side panel (slide-over) */}
+      {/* Side panel */}
       <SidePanel
         open={sideOpen}
         onClose={() => setSideOpen(false)}
@@ -56,26 +62,33 @@ export default function MapLayout() {
         onRemoveVehicle={vm.removeExistingVehicle}
       />
 
-      {/* Route panel (por ahora abajo-centro, parecido a Figma) */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 w-[380px] max-w-[92vw]">
-        <RoutePanel
-          profile={vm.profile}
-          onProfileChange={vm.changeProfile}
-          canRoute={vm.canRoute}
-          loading={vm.loading}
-          error={vm.error}
-          onRouteClick={vm.planTrip}
-          originLabel={vm.origin?.label ?? ''}
-          destinationLabel={vm.destination?.label ?? ''}
-          summary={vm.route?.summary ?? null}
-          costText={vm.costText}
-          vehicles={vm.vehicles}
-          selectedVehicleId={vm.selectedVehicleId}
-          onVehicleChange={vm.changeVehicle}
-          fuelType={vm.fuelType}
-          onFuelTypeChange={vm.setFuelType}
-        />
-      </div>
+      {/* Route panel */}
+      {vm.route && !vm.error && (
+        <div className="absolute top-4 right-4 max-w-sm w-[340px] space-y-2 z-[500]">
+          <RoutePanel
+            profile={vm.profile}
+            onProfileChange={vm.changeProfile}
+            canRoute={vm.canRoute}
+            loading={vm.loading}
+            error={vm.error}
+            onRouteClick={vm.planTrip}
+            originLabel={vm.origin?.label ?? ''}
+            destinationLabel={vm.destination?.label ?? ''}
+            summary={vm.route?.summary ?? null}
+            costText={vm.costText}
+            vehicles={vm.vehicles}
+            selectedVehicleId={vm.selectedVehicleId}
+            onVehicleChange={vm.changeVehicle}
+            fuelType={vm.fuelType}
+            onFuelTypeChange={vm.setFuelType}
+            showCalculateButton={false}
+            onClose={() => {
+              vm.resetTrip();
+              setResetKey((k) => k + 1);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

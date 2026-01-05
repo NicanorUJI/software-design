@@ -2,21 +2,49 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PlaceSuggestion } from '../types/route';
 import { getRoutingService } from '../services/serviceRegistry';
 
-type Mode = 'A' | 'B';
+type Field = 'origin' | 'destination';
 
 interface Props {
   onSelectA: (p: PlaceSuggestion) => void;
   onSelectB: (p: PlaceSuggestion) => void;
+
   originLabel?: string;
   destinationLabel?: string;
+
+  onCalculateRoute: () => void;
+  canCalculateRoute: boolean;
+  loading: boolean;
+  error?: string | null;
+  resetKey?: number;
 }
 
-export default function SearchBar({ onSelectA, onSelectB, originLabel, destinationLabel }: Props) {
-  const [query, setQuery] = useState('');
+export default function SearchBar({
+  onSelectA,
+  onSelectB,
+  originLabel,
+  destinationLabel,
+  onCalculateRoute,
+  canCalculateRoute,
+  loading,
+  error,
+  resetKey,
+}: Props) {
+  const [originQuery, setOriginQuery] = useState('');
+  const [destQuery, setDestQuery] = useState('');
+  const [activeField, setActiveField] = useState<Field>('origin');
+
   const [results, setResults] = useState<PlaceSuggestion[]>([]);
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<Mode>('A');
+
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setOriginQuery('');
+    setDestQuery('');
+    setResults([]);
+    setOpen(false);
+    setActiveField('origin');
+  }, [resetKey]);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -27,11 +55,14 @@ export default function SearchBar({ onSelectA, onSelectB, originLabel, destinati
     return () => document.removeEventListener('click', onClick);
   }, []);
 
+  // Debounce
   useEffect(() => {
+    const q = (activeField === 'origin' ? originQuery : destQuery).trim();
+
     const id = setTimeout(async () => {
-      const q = query.trim();
       if (q.length < 2) {
         setResults([]);
+        setOpen(false);
         return;
       }
 
@@ -47,68 +78,125 @@ export default function SearchBar({ onSelectA, onSelectB, originLabel, destinati
     }, 200);
 
     return () => clearTimeout(id);
-  }, [query]);
-
-  const placeholder = useMemo(
-    () => (mode === 'A' ? 'Search origin (A)…' : 'Search destination (B)…'),
-    [mode]
-  );
+  }, [activeField, originQuery, destQuery]);
 
   const pick = (p: PlaceSuggestion) => {
-    if (mode === 'A') onSelectA(p);
-    else onSelectB(p);
+    if (activeField === 'origin') {
+      onSelectA(p);
+      setOriginQuery('');
+      // UX: saltar automáticamente al destino
+      setActiveField('destination');
+    } else {
+      onSelectB(p);
+      setDestQuery('');
+    }
 
-    setQuery('');
     setResults([]);
     setOpen(false);
-
-    if (mode === 'A') setMode('B');
   };
 
+  const activePlaceholder = useMemo(() => {
+    return activeField === 'origin' ? 'Start location' : 'Destination';
+  }, [activeField]);
+
   return (
-    <div ref={containerRef} className="absolute top-4 left-1/2 -translate-x-1/2 w-[520px] max-w-[92vw] z-[500]">
-      <div className="bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-black/5 p-2 flex items-center gap-2">
-        <button
-          className={`px-3 py-1 rounded-xl text-sm border border-black/10
-           ${mode === 'A' ? 'bg-blue-600 text-white' : 'bg-white'}`}
-          onClick={() => setMode('A')}
-          title="Set next selection as Origin (A)"
-        >
-          A
-        </button>
-        <button
-          className={`px-3 py-1 rounded-xl text-sm border border-black/10
-           ${mode === 'A' ? 'bg-blue-600 text-white' : 'bg-white'}`}
-          onClick={() => setMode('B')}
-          title="Set next selection as Destination (B)"
-        >
-          B
-        </button>
+    <div
+      ref={containerRef}
+      className="w-[640px] max-w-[92vw]"
+    >
+      <div className="bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-black/5 overflow-hidden">
+        {/* Row: inputs + actions */}
+        <div className="flex items-stretch">
+          {/* Inputs column */}
+          <div className="flex-1 p-2">
+            <div className="rounded-xl bg-black/5 p-2 space-y-2">
+              {/* Origin */}
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full bg-black text-white text-xs flex items-center justify-center">
+                  A
+                </div>
 
-        <input
-          className="flex-1 px-3 py-2 rounded-xl bg-black/5 outline-none border border-transparent focus:border-blue-400"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={placeholder}
-        />
+                <input
+                  className="flex-1 bg-transparent outline-none text-sm"
+                  placeholder="Start location"
+                  value={activeField === 'origin' ? originQuery : (originLabel ?? '')}
+                  onChange={(e) => {
+                    setActiveField('origin');
+                    setOriginQuery(e.target.value);
+                  }}
+                  onFocus={() => setActiveField('origin')}
+                />
+              </div>
 
-        <div className="text-xs text-gray-500 pr-2 select-none">
-          {originLabel ? `A: ${originLabel}` : 'A: —'}{' '}
-          {destinationLabel ? `· B: ${destinationLabel}` : '· B: —'}
+              <div className="h-px bg-black/10" />
+
+              {/* Destination */}
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full bg-black text-white text-xs flex items-center justify-center">
+                  B
+                </div>
+
+                <input
+                  className="flex-1 bg-transparent outline-none text-sm"
+                  placeholder="Destination"
+                  value={activeField === 'destination' ? destQuery : (destinationLabel ?? '')}
+                  onChange={(e) => {
+                    setActiveField('destination');
+                    setDestQuery(e.target.value);
+                  }}
+                  onFocus={() => setActiveField('destination')}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Actions column */}
+          <div className="p-2 flex flex-col gap-2">
+            {/* Calculate */}
+            <button
+              type="button"
+              onClick={onCalculateRoute}
+              disabled={!canCalculateRoute || loading}
+              className="h-10 w-10 rounded-xl bg-black text-white disabled:opacity-40 flex items-center justify-center"
+              title="Calculate route"
+              aria-label="calculate route"
+            >
+              {loading ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <span className="text-lg leading-none">➜</span>
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Dropdown */}
+        {open && results.length > 0 && (
+          <div className="border-t border-black/5">
+            {results.map((r) => (
+              <button
+                key={`${r.label}-${r.position.lat}-${r.position.lng}`}
+                className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
+                onClick={() => pick(r)}
+                type="button"
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Hint / error */}
+        {(!open || results.length === 0) && (originQuery.trim().length >= 2 || destQuery.trim().length >= 2) && (
+          <div className="px-3 pb-2 text-xs text-gray-500">
+            {open ? 'No results.' : `Searching… (${activePlaceholder})`}
+          </div>
+        )}
       </div>
 
-      {open && results.length > 0 && (
-        <div className="mt-2 bg-white/95 rounded-2xl shadow-xl overflow-hidden">
-          {results.map((r) => (
-            <button
-              key={`${r.label}-${r.position.lat}-${r.position.lng}`}
-              className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
-              onClick={() => pick(r)}
-            >
-              {r.label}
-            </button>
-          ))}
+      {error && (
+        <div className="mt-2 bg-white/95 rounded-2xl shadow-xl border border-red-200 px-3 py-2 text-sm text-red-700">
+          {error}
         </div>
       )}
     </div>

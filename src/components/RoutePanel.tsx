@@ -1,30 +1,36 @@
 // src/components/RoutePanel.tsx
 import type { TravelProfile, RouteSummary } from '../types/route';
 import { formatDuration, formatKm } from '../utils/format';
-
 import type { Vehicle, FuelType } from '../types/domain';
 
 interface Props {
   profile: TravelProfile;
   onProfileChange: (p: TravelProfile) => void;
+
   canRoute: boolean;
   loading: boolean;
   error: string | null;
-  onRouteClick: () => void;
+
+  onRouteClick: () => void; // lo dejamos por compatibilidad si lo usas en otro sitio
   originLabel: string;
   destinationLabel: string;
+
   summary: RouteSummary | null;
   costText?: string | null;
 
-  // optional
   vehicles?: Vehicle[];
   selectedVehicleId?: string | null;
   onVehicleChange?: (id: string | null) => void;
 
   fuelType?: FuelType;
   onFuelTypeChange?: (t: FuelType) => void;
-}
 
+  // NEW
+  onClose?: () => void;
+
+  // Si ya lo estabas usando
+  showCalculateButton?: boolean;
+}
 
 export default function RoutePanel(props: Props) {
   const {
@@ -43,13 +49,30 @@ export default function RoutePanel(props: Props) {
     onVehicleChange,
     fuelType,
     onFuelTypeChange,
+    onClose,
+    showCalculateButton = true,
   } = props;
 
   const costTitle = profile === 'driving-car' ? 'Estimated fuel cost' : 'Estimated energy';
 
   return (
-    <div className="bg-white/95 backdrop-blur shadow-xl rounded-2xl p-4 space-y-3">
-      <div className="text-lg font-semibold">Route</div>
+    <div className="bg-white/95 backdrop-blur shadow-xl rounded-2xl p-4 space-y-3 border border-black/5">
+      {/* Header con botón cerrar */}
+      <div className="flex items-center justify-between">
+        <div className="text-lg font-semibold">Route</div>
+
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 w-9 rounded-full hover:bg-black/5 flex items-center justify-center"
+            aria-label="close route panel"
+            title="Close"
+          >
+            ✕
+          </button>
+        )}
+      </div>
 
       <div className="text-sm text-gray-600">
         <div>
@@ -63,7 +86,7 @@ export default function RoutePanel(props: Props) {
       <div className="flex items-center gap-2 text-sm">
         <label className="font-medium">Mode:</label>
         <select
-          className="border rounded-md px-2 py-1"
+          className="border rounded-md px-2 py-1 bg-white"
           value={profile}
           onChange={(e) => onProfileChange(e.target.value as TravelProfile)}
         >
@@ -78,7 +101,7 @@ export default function RoutePanel(props: Props) {
           <div className="flex items-center gap-2">
             <label className="font-medium w-20">Vehicle:</label>
             <select
-              className="border rounded-md px-2 py-1 flex-1"
+              className="border rounded-md px-2 py-1 flex-1 bg-white"
               value={selectedVehicleId ?? ''}
               onChange={(e) => onVehicleChange?.(e.target.value ? e.target.value : null)}
             >
@@ -91,12 +114,10 @@ export default function RoutePanel(props: Props) {
             </select>
           </div>
 
-          {/* Fuel type always available for quick estimate (when no vehicle selected),
-              but also useful to force a fuel price when the selected vehicle uses that fuel. */}
           <div className="flex items-center gap-2">
             <label className="font-medium w-20">Fuel:</label>
             <select
-              className="border rounded-md px-2 py-1 flex-1"
+              className="border rounded-md px-2 py-1 flex-1 bg-white"
               value={fuelType}
               onChange={(e) => onFuelTypeChange?.(e.target.value as FuelType)}
             >
@@ -108,13 +129,16 @@ export default function RoutePanel(props: Props) {
         </div>
       )}
 
-      <button
-        className="w-full rounded-xl py-2 font-medium bg-black text-white disabled:opacity-40"
-        onClick={onRouteClick}
-        disabled={!canRoute || loading}
-      >
-        {loading ? 'Calculating…' : 'Calculate route'}
-      </button>
+      {showCalculateButton && (
+        <button
+          className="w-full rounded-xl py-2 font-medium bg-black text-white disabled:opacity-40"
+          onClick={onRouteClick}
+          disabled={!canRoute || loading}
+          type="button"
+        >
+          {loading ? 'Calculating…' : 'Calculate route'}
+        </button>
+      )}
 
       {error && <div className="text-red-600 text-sm">{error}</div>}
 
