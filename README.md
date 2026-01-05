@@ -1,147 +1,132 @@
-# Spike – Diseño del software
+# FakeMaps
 
-Este repositorio contiene el *spike* inicial del proyecto de movilidad solicitado en el documento oficial del **Proyecto Conjunto de Diseño y Paradigmas de Software (UJI, curso 2025/2026)**.
+FakeMaps es una aplicación web (React + TypeScript) para **planificar rutas** y **estimar coste/energía** de viaje. La app está diseñada con una separación clara por capas y aplica patrones (MVVM, Strategy, Adapter y Facade) para mantener el código extensible y razonable de mantener.
 
----
+## Funcionalidades
 
-## Objetivos del Spike
+- **Autenticación (Firebase Auth)**
+  - Registro, login, logout y borrado de cuenta.
+- **Planificación de rutas (OpenRouteService / ORS)**
+  - Autocomplete de origen/destino.
+  - Cálculo de ruta y renderizado en mapa (Leaflet).
+- **Estimación de coste / energía**
+  - En coche: estimación del coste en € basada en distancia y consumo.
+  - A pie / bicicleta: estimación de energía en kcal.
+- **Preferencias por usuario (Firestore)**
+  - Perfil por defecto (coche / bici / a pie).
+  - Tipo de combustible por defecto.
+- **Vehículos por usuario (Firestore)**
+  - Guardado de vehículos con tipo de combustible y consumo (L/100km).
+- **Lugares y rutas guardadas (Firestore)**
+  - Guardar lugares y rutas frecuentes.
+  - Aplicar lugares guardados al planificador.
 
-Durante este spike se probaron con éxito los siguientes puntos:
+## Tech stack
 
-| Área | Tecnología | Estado |
-|------|-------------|--------|
-| Mapa | [Leaflet](https://leafletjs.com/) | Integrado, mostrando mapa interactivo |
-| Cálculo de rutas | [OpenRouteService API](https://openrouteservice.org/) | Peticiones REST funcionales |
-| Persistencia | [Firebase Firestore](https://firebase.google.com/docs/firestore) | CRUD funcional para entidades |
-| Arquitectura | React + TypeScript + modular services |Código desacoplado y mantenible |
-| Configuración | Variables de entorno + reglas dev | Implementado |
+- **Frontend:** React + TypeScript
+- **Build tool:** Vite (estructura típica `index.html` + `src/main.tsx`)
+- **UI:** Tailwind CSS
+- **Mapa:** Leaflet + React-Leaflet
+- **Auth/DB:** Firebase Auth + Firestore
+- **Routing:** OpenRouteService (Geocoding + Directions)
+- **Fuel pricing:** API pública del Gobierno de España (promedio nacional con TTL 30 min)
 
----
+## Requisitos
 
-## Estructura del proyecto
+- Node.js 18+ (recomendado) y npm
+- Cuenta/proyecto Firebase con:
+  - Authentication (Email/Password)
+  - Firestore habilitado
+- API key de OpenRouteService
 
-```
-fake-maps/
-├── src/
-│ ├── components/
-│ │ ├── HamburgerMenu.tsx
-│ │ ├── MapView.tsx
-│ │ ├── RoutePanel.tsx
-│ │ ├── SearchBar.tsx
-│ │ └── SidePanel.tsx
-│ ├── layouts/
-│ │ └── MapLayout.tsx
-│ ├── pages/
-│ ├── routes/
-│ │ └── AppRouter.tsx
-│ ├── services/
-│ │ ├── repos/
-│ │ │ ├── placesRepo.ts
-│ │ │ ├── preferencesRepo.ts
-│ │ │ ├── routesRepo.ts
-│ │ │ └── vehiclesRepo.ts
-│ │ ├── firebase.ts # Configuración Firebase
-│ │ ├── firestoreHelpers.ts # Helper genérico CRUD
-│ │ ├── fuel.ts # API precios combustible/energía (stub)
-│ │ └── ors.ts # OpenRouteService client
-│ ├── styles/
-│ ├── types/
-│ │ ├── domain.ts
-│ │ └── route.ts
-│ ├── utils/
-│ │ ├── cost.ts
-│ │ └── format.ts
-│ ├── App.tsx
-│ └── main.tsx
-│
-├── tests/
-│ ├── __mocks__/firestoreHelpers.mock.ts
-│ ├── placesRepo.test.ts
-│ ├── preferencesRepo.test.ts
-│ └── routesRepo.test.ts
-│
-├── .env # (local)
-├── .env.example # ejemplo de variables
-├── .gitignore
-├── index.html
-├── package.json
-├── package-lock.json
-├── readme.md
-├── tsconfig.json
-└── vitest.config.ts
-```
+## Instalación y ejecución
 
----
-
-## Instalación y configuración
-
-### 1. Clonar el repositorio
-
-```bash
-git clone https://github.com/<tu_usuario>/fake-maps.git
-cd fake-maps
-```
-
-### 2. Instalar dependencias
+1) Instalar dependencias
 
 ```bash
 npm install
 ```
 
-### 3. Configurar variables de entorno
+2) Configurar variables de entorno
 
-Crea un archivo `.env.local` en la raíz con tus credenciales de Firebase:
+Crea un archivo `.env.local` en la raíz del proyecto (ver plantilla abajo).
+
+3) Ejecutar en modo desarrollo
 
 ```bash
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_APP_ID=1:...:web:...
+npm run dev
+```
+
+4) Build de producción
+
+```bash
+npm run build
+npm run preview
+```
+
+## Variables de entorno
+
+La app usa variables `VITE_*` (Vite expone estas variables al frontend).
+
+Crea un `.env.local` con:
+
+```bash
+# OpenRouteService
 VITE_ORS_API_KEY=...
-```
----
 
-## Entidades persistidas
-
-Cada entidad tiene su propio CRUD implementado en `src/services/repos`:
-
-| Entidad | Campos principales | Descripción |
-|----------|--------------------|--------------|
-| **Places** | label, position(lat/lng) | Lugares de interés |
-| **Vehicles** | name, fuelType, consumption | Vehículos del usuario |
-| **Routes** | origin, destination, profile, distanceKm, durationMin | Rutas guardadas |
-| **Preferences** | defaultProfile, defaultFuelType | Preferencias de usuario |
-
-
-## Ejecución de pruebas
-
-El proyecto incluye tests unitarios con mocks en memoria, por lo que no se requiere conexión real a Firebase.
-
-### Ejecutar una sola vez:
-```bash
-npx vitest
+# Firebase
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_APP_ID=...
 ```
 
-### Ejecutar en modo observador:
-```bash
-npx vitest --watch
+Recomendación: mantener un `.env.example` en el repo (sin secretos) y **no** commitear `.env.local`.
+
+## Arquitectura
+
+### Estructura de carpetas (resumen)
+
+```text
+src/
+  domain/
+    cost/               # Strategy: cálculo de coste/energía
+    facades/            # Facade: orquestación del flujo "planTrip"
+    ports/              # Puertos (interfaces) para servicios externos
+  services/
+    adapters/           # Adapters: implementaciones de puertos (ORS, fuel)
+    repos/              # Persistencia Firestore (por usuario)
+    auth.ts             # operaciones auth
+    firebase.ts         # init Firebase
+  viewModels/           # MVVM: estado + acciones
+    base/               # ViewModel base + hook
+  components/           # UI components
+  layouts/ pages/ routes/
+  utils/ types/
 ```
 
-### Ejecutar con cobertura:
-```bash
-npx vitest run --coverage
-```
+### Patrones aplicados
 
-> Los tests cubren los repositorios de `places`, `vehicles`, `routes` y `preferences`.
+- **MVVM**
+  - `viewModels/*` concentra estado, side-effects y acciones.
+  - Los componentes consumen estado y disparan acciones, evitando lógica de negocio en la UI.
 
----
+- **Strategy (costos)**
+  - `domain/cost/*Strategy.ts` implementa estrategias por modo (`driving-car`, `cycling-regular`, `foot-walking`).
+  - `domain/cost/TripCostCalculator` selecciona estrategia según `TravelProfile`.
 
-## Lo que contiene este Spike
+- **Adapter (integraciones externas)**
+  - `domain/ports/*` define interfaces (`RoutingService`, `FuelPricingService`).
+  - `services/adapters/*` implementa esas interfaces para desacoplar dominio de proveedores externos.
 
-✅ Llamadas REST correctas a OpenRouteService.  
-✅ Renderizado de mapa interactivo con Leaflet.  
-✅ Lectura/escritura en Firestore (modo dev).  
-✅ Código modular, desacoplado y escalable.  
-✅ Pruebas unitarias ejecutables localmente con mocks.  
+- **Facade (flujo de negocio de alto nivel)**
+  - `domain/facades/TripPlannerFacade` centraliza: routing + fuel price + cálculo de coste.
 
----
+## Persistencia (Firestore)
+
+La persistencia está organizada por usuario:
+
+- `users/{uid}/places`
+- `users/{uid}/routes`
+- `users/{uid}/vehicles`
+- `users/{uid}/preferences`
