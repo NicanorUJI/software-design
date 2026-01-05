@@ -24,7 +24,7 @@ export default function MapView({ origin, destination, route }: Props) {
   const center = useMemo(() => ({ lat: 39.98, lng: -0.05 }), []);
 
   return (
-    <MapContainer center={center} zoom={12} style={{ height: '100vh', width: '100%' }}>
+    <MapContainer center={center} zoom={12} className='h-full w-full'>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

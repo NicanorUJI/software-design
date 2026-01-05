@@ -67,16 +67,18 @@ export default function SearchBar({ onSelectA, onSelectB, originLabel, destinati
 
   return (
     <div ref={containerRef} className="absolute top-4 left-1/2 -translate-x-1/2 w-[520px] max-w-[92vw] z-[500]">
-      <div className="bg-white/95 backdrop-blur rounded-2xl shadow-xl p-2 flex items-center gap-2">
+      <div className="bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-black/5 p-2 flex items-center gap-2">
         <button
-          className={`px-3 py-1 rounded-xl text-sm border ${mode === 'A' ? 'bg-black text-white' : ''}`}
+          className={`px-3 py-1 rounded-xl text-sm border border-black/10
+           ${mode === 'A' ? 'bg-blue-600 text-white' : 'bg-white'}`}
           onClick={() => setMode('A')}
           title="Set next selection as Origin (A)"
         >
           A
         </button>
         <button
-          className={`px-3 py-1 rounded-xl text-sm border ${mode === 'B' ? 'bg-black text-white' : ''}`}
+          className={`px-3 py-1 rounded-xl text-sm border border-black/10
+           ${mode === 'A' ? 'bg-blue-600 text-white' : 'bg-white'}`}
           onClick={() => setMode('B')}
           title="Set next selection as Destination (B)"
         >
@@ -84,7 +86,7 @@ export default function SearchBar({ onSelectA, onSelectB, originLabel, destinati
         </button>
 
         <input
-          className="flex-1 px-3 py-2 rounded-xl border outline-none"
+          className="flex-1 px-3 py-2 rounded-xl bg-black/5 outline-none border border-transparent focus:border-blue-400"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}

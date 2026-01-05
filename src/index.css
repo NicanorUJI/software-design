@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/* Base layout para que h-full y overlays funcionen bien */
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+/* Leaflet necesita height/width para renderizar consistente */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+}

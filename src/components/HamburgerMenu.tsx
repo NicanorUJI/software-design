@@ -1,20 +1,12 @@
-import React from "react";
-
 export default function HamburgerMenu({ onClick }: { onClick: () => void }) {
   return (
-    <button onClick={onClick} style={btnStyle} aria-label="menu">
-      ☰
+    <button
+      onClick={onClick}
+      aria-label="menu"
+      className="h-11 w-11 rounded-full bg-white/95 backdrop-blur shadow-xl border border-black/5
+                 flex items-center justify-center hover:bg-white transition"
+    >
+      <span className="text-xl leading-none">≡</span>
     </button>
   );
 }
-
-const btnStyle: React.CSSProperties = {
-  height: 44,
-  width: 44,
-  borderRadius: "50%",
-  border: "none",
-  boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
-  background: "white",
-  cursor: "pointer",
-  fontSize: 20,
-};
