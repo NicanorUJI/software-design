@@ -13,13 +13,28 @@ export type PlanTripRequest = {
 
   vehicle?: Vehicle | null;
 
-  // optional: if no vehicle selected, we can still estimate
   fuelType?: FuelType;
   defaultConsumption: Record<FuelType, number>;
 };
 
 export type PlanTripResult = {
   route: RouteResult;
+  cost: CostResult | null;
+  costText: string | null;
+  euroPerLiter: number | null;
+};
+
+export type EstimateCostRequest = {
+  profile: TravelProfile;
+  distanceKm: number;
+
+  vehicle?: Vehicle | null;
+
+  fuelType?: FuelType;
+  defaultConsumption: Record<FuelType, number>;
+};
+
+export type EstimateCostResult = {
   cost: CostResult | null;
   costText: string | null;
   euroPerLiter: number | null;
@@ -40,14 +55,10 @@ export class TripPlannerFacade {
     this.costCalculator = costCalculator;
   }
 
+  /**
+   * Full flow: route + fuel price (if needed) + cost.
+   */
   async planTrip(req: PlanTripRequest): Promise<PlanTripResult> {
-    // Resolve fuel inputs (vehicle wins, else fallback, else default)
-    const effectiveFuelType: FuelType =
-      req.vehicle?.fuelType ?? req.fuelType ?? 'gasoline95';
-
-    const effectiveLitersPer100 =
-      req.vehicle?.litersPer100 ?? req.defaultConsumption[effectiveFuelType];
-
     // 1) Route
     const route = await this.routing.getDirections({
       profile: req.profile,
@@ -55,25 +66,55 @@ export class TripPlannerFacade {
       to: req.destination.position,
     });
 
-    // 2) Fuel price (only for car)
+    // 2) Cost
+    const costRes = await this.estimateCost({
+      profile: req.profile,
+      distanceKm: route.summary.distanceKm,
+      vehicle: req.vehicle ?? null,
+      fuelType: req.fuelType,
+      defaultConsumption: req.defaultConsumption,
+    });
+
+    return {
+      route,
+      cost: costRes.cost,
+      costText: costRes.costText,
+      euroPerLiter: costRes.euroPerLiter,
+    };
+  }
+
+  async estimateCost(req: EstimateCostRequest): Promise<EstimateCostResult> {
+    const { effectiveFuelType, effectiveLitersPer100 } = this.resolveFuelInputs(req);
+
+    // Fuel price (only for car)
     let euroPerLiter: number | null = null;
     if (req.profile === 'driving-car') {
       euroPerLiter = await this.getFuelPriceCached(effectiveFuelType);
     }
 
-    // 3) Cost (Strategy)
+    // Cost (Strategy)
     const cost = await this.costCalculator.calculate(req.profile, {
-      distanceKm: route.summary.distanceKm,
+      distanceKm: req.distanceKm,
       vehicle: req.vehicle ?? null,
       fallbackFuelType: effectiveFuelType,
       fallbackLitersPer100: effectiveLitersPer100,
       euroPerLiter,
     });
 
-    // 4) UI-friendly text
+    // UI-friendly text
     const costText = this.formatCostText(req.profile, cost);
 
-    return { route, cost, costText, euroPerLiter };
+    return { cost, costText, euroPerLiter };
+  }
+
+  private resolveFuelInputs(req: { vehicle?: Vehicle | null; fuelType?: FuelType; defaultConsumption: Record<FuelType, number> }) {
+    // Resolve fuel inputs (vehicle wins, else fallback, else default)
+    const effectiveFuelType: FuelType = req.vehicle?.fuelType ?? req.fuelType ?? 'gasoline95';
+
+    const effectiveLitersPer100 =
+      req.vehicle?.litersPer100 ?? req.defaultConsumption[effectiveFuelType];
+
+    return { effectiveFuelType, effectiveLitersPer100 };
   }
 
   private async getFuelPriceCached(type: FuelType): Promise<number | null> {

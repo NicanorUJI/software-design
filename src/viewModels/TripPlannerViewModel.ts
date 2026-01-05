@@ -39,6 +39,7 @@ export class TripPlannerViewModel extends ViewModel<TripPlannerState> {
 
   private initialized = false;
   private planToken = 0;
+  private costToken = 0;
 
   private readonly defaultConsumption: Record<FuelType, number> = {
     gasoline95: 6.5,
@@ -136,11 +137,13 @@ export class TripPlannerViewModel extends ViewModel<TripPlannerState> {
 
   setFuelType = (t: FuelType) => {
     this.setState({ fuelType: t, costText: null, error: null });
+    this.recalcCostIfPossible();
   };
 
   changeVehicle = (id: string | null) => {
     if (!id) {
       this.setState({ selectedVehicleId: null, costText: null, error: null });
+      this.recalcCostIfPossible();
       return;
     }
 
@@ -209,6 +212,33 @@ export class TripPlannerViewModel extends ViewModel<TripPlannerState> {
       });
     }
   };
+
+  private recalcCostIfPossible() {
+    const s = this.snapshot;
+    if (!s.route) return;
+    if (s.profile !== 'driving-car') return;
+
+    const token = ++this.costToken;
+    const route = s.route;
+
+    void (async () => {
+        try {
+        const res = await this.facade.estimateCost({
+            profile: s.profile,
+            distanceKm: route.summary.distanceKm,
+            vehicle: this.selectedVehicle,
+            fuelType: s.fuelType,
+            defaultConsumption: this.defaultConsumption,
+        });
+
+        if (token !== this.costToken) return;
+        this.setState({ costText: res.costText });
+        } catch {
+        if (token !== this.costToken) return;
+        this.setState({ costText: null });
+        }
+    })();
+}
 
   resetTrip = () => {
     this.planToken++;
