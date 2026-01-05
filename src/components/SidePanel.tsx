@@ -16,11 +16,11 @@ interface Props {
 
   onApplyPreferences?: (p: Preferences) => void;
 
-  // NEW: vehicles are owned by MapLayout (single source of truth)
-  vehicles: Vehicle[];
-  onAddVehicle: (v: Omit<Vehicle, 'id' | 'createdAt'>) => Promise<void>;
-  onRemoveVehicle: (id: string) => Promise<void>;
+  vehicles?: Vehicle[];
+  onAddVehicle?: (v: Omit<Vehicle, 'id' | 'createdAt'>) => Promise<void>;
+  onRemoveVehicle?: (id: string) => Promise<void>;
 }
+
 
 export default function SidePanel({
   currentOrigin,
@@ -122,6 +122,7 @@ export default function SidePanel({
     const name = vehName.trim();
     if (!name) return;
     if (!Number.isFinite(vehLitersParsed) || vehLitersParsed <= 0) return;
+    if (!onAddVehicle) return;
 
     await onAddVehicle({
       name,
@@ -226,24 +227,24 @@ export default function SidePanel({
           <button
             className="px-3 py-1 rounded-lg bg-gray-900 text-white disabled:opacity-40"
             onClick={handleAddVehicle}
-            disabled={!vehName.trim() || !Number.isFinite(vehLitersParsed) || vehLitersParsed <= 0}
+            disabled={!vehName.trim() || !Number.isFinite(vehLitersParsed) || vehLitersParsed <= 0 || !onAddVehicle}
           >
             Add
           </button>
         </div>
 
         <ul className="max-h-40 overflow-auto divide-y">
-          {vehicles.map((v) => (
+          {vehicles?.map((v) => (
             <li key={v.id} className="py-1 text-sm flex items-center justify-between gap-2">
               <div className="truncate">
                 <b>{v.name}</b> — {v.fuelType}, {v.litersPer100} L/100km
               </div>
-              <button className="text-red-600" onClick={() => onRemoveVehicle(v.id)}>
+              <button className="text-red-600" onClick={() => onRemoveVehicle?.(v.id)}>
                 Remove
               </button>
             </li>
           ))}
-          {vehicles.length === 0 && <div className="text-xs text-gray-500 py-1">No vehicles saved.</div>}
+          {(vehicles?.length ?? 0) === 0 && <div className="text-xs text-gray-500 py-1">No vehicles saved.</div>}
         </ul>
       </div>
 

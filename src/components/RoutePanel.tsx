@@ -2,7 +2,6 @@
 import type { TravelProfile, RouteSummary } from '../types/route';
 import { formatDuration, formatKm } from '../utils/format';
 
-// NEW
 import type { Vehicle, FuelType } from '../types/domain';
 
 interface Props {
@@ -17,14 +16,15 @@ interface Props {
   summary: RouteSummary | null;
   costText?: string | null;
 
-  // NEW: vehicle selection (optional) + fuel quick estimate
-  vehicles: Vehicle[];
-  selectedVehicleId: string | null;
-  onVehicleChange: (id: string | null) => void;
+  // optional
+  vehicles?: Vehicle[];
+  selectedVehicleId?: string | null;
+  onVehicleChange?: (id: string | null) => void;
 
-  fuelType: FuelType;
-  onFuelTypeChange: (t: FuelType) => void;
+  fuelType?: FuelType;
+  onFuelTypeChange?: (t: FuelType) => void;
 }
+
 
 export default function RoutePanel(props: Props) {
   const {
@@ -80,10 +80,10 @@ export default function RoutePanel(props: Props) {
             <select
               className="border rounded-md px-2 py-1 flex-1"
               value={selectedVehicleId ?? ''}
-              onChange={(e) => onVehicleChange(e.target.value ? e.target.value : null)}
+              onChange={(e) => onVehicleChange?.(e.target.value ? e.target.value : null)}
             >
               <option value="">No vehicle (avg consumption)</option>
-              {vehicles.map((v) => (
+              {vehicles?.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.name} ({v.litersPer100} L/100km)
                 </option>
@@ -98,7 +98,7 @@ export default function RoutePanel(props: Props) {
             <select
               className="border rounded-md px-2 py-1 flex-1"
               value={fuelType}
-              onChange={(e) => onFuelTypeChange(e.target.value as FuelType)}
+              onChange={(e) => onFuelTypeChange?.(e.target.value as FuelType)}
             >
               <option value="gasoline95">Gasoline 95</option>
               <option value="gasoline98">Gasoline 98</option>
