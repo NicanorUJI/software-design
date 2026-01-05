@@ -101,8 +101,6 @@ export default function ProfilePage() {
               👤
             </div>
 
-            <div className="mt-3 text-lg font-semibold">FakeMaps</div>
-
             <div className="mt-2 text-sm text-gray-700">{s.userEmail ?? '—'}</div>
 
             <button

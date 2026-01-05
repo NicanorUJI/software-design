@@ -58,19 +58,28 @@ export interface VehiclesPort {
   remove(id: string): Promise<void>;
 }
 
+export type Coords = { lat: number; lng: number };
+export type PlaceLike = { label: string; position: Coords };
+
 export class SidePanelViewModel extends ViewModel<SidePanelState> {
   private readonly placesRepo: PlacesRepoPort;
   private readonly routesRepo: RoutesRepoPort;
   private readonly prefsRepo: PreferencesRepoPort;
   private readonly vehiclesPort: VehiclesPort;
   private readonly onPreferencesChanged: (p: Preferences) => void;
+  private readonly onSetOrigin: (p: PlaceLike) => void;
+  private readonly onSetDestination: (p: PlaceLike) => void;
+  private readonly onPlanTrip: () => void;
 
   constructor(
     placesRepo: PlacesRepoPort,
     routesRepo: RoutesRepoPort,
     prefsRepo: PreferencesRepoPort,
     vehiclesPort: VehiclesPort,
-    onPreferencesChanged: (p: Preferences) => void
+    onPreferencesChanged: (p: Preferences) => void,
+    onSetOrigin: (p: PlaceLike) => void,
+    onSetDestination: (p: PlaceLike) => void,
+    onPlanTrip: () => void
   ) {
     super({
       section: 'menu',
@@ -95,6 +104,9 @@ export class SidePanelViewModel extends ViewModel<SidePanelState> {
     this.prefsRepo = prefsRepo;
     this.vehiclesPort = vehiclesPort;
     this.onPreferencesChanged = onPreferencesChanged;
+    this.onSetOrigin = onSetOrigin;
+    this.onSetDestination = onSetDestination;
+    this.onPlanTrip = onPlanTrip;
   }
 
   // ---------- lifecycle ----------
@@ -175,7 +187,7 @@ export class SidePanelViewModel extends ViewModel<SidePanelState> {
     return nameOk && litersOk;
   }
 
-  // ---------- saved ----------
+  // ---------- saved CRUD ----------
   async saveOrigin() {
     const origin = this.snapshot.ctx.origin;
     if (!origin) return;
@@ -226,6 +238,32 @@ export class SidePanelViewModel extends ViewModel<SidePanelState> {
     this.setState((prev) => ({ ...prev, routes: prev.routes.filter((r) => r.id !== id) }));
   }
 
+  applySavedRoute(r: SavedRoute) {
+    this.onSetOrigin({ label: r.origin.label, position: r.origin.position });
+    this.onSetDestination({ label: r.destination.label, position: r.destination.position });
+    this.onPlanTrip();
+  }
+
+  applyPlace(p: Place) {
+    const origin = this.snapshot.ctx.origin;
+    const destination = this.snapshot.ctx.destination;
+
+    if (!origin) {
+      this.onSetOrigin({ label: p.label, position: p.position });
+      return;
+    }
+
+    if (!destination) {
+      this.onSetDestination({ label: p.label, position: p.position });
+      this.onPlanTrip();
+      return;
+    }
+
+    // ya hay A y B: toma el lugar como nuevo A y recalcula hacia B
+    this.onSetOrigin({ label: p.label, position: p.position });
+    this.onPlanTrip();
+  }
+
   // ---------- preferences ----------
   async setDefaultProfile(profile: TravelProfile) {
     const current = this.snapshot.prefs;
@@ -259,7 +297,7 @@ export class SidePanelViewModel extends ViewModel<SidePanelState> {
     this.onPreferencesChanged(next);
   }
 
-  // ---------- vehicles form ----------
+  // ---------- vehicles ----------
   setVehName(v: string) {
     this.setState({ vehName: v });
   }
@@ -281,12 +319,10 @@ export class SidePanelViewModel extends ViewModel<SidePanelState> {
       litersPer100: this.vehLitersParsed,
     });
 
-    // El listado lo refresca el "source of truth" (tripVm) y nos lo inyecta vía setVehicles()
     this.setState({ vehName: '', vehLitersPer100: '6.5' });
   }
 
   async removeVehicle(id: string) {
     await this.vehiclesPort.remove(id);
-    // Igual: el listado se refresca desde fuera
   }
 }

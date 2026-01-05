@@ -77,9 +77,13 @@ export default function MapLayout() {
       (p) => {
         tripVm.changeProfile(p.defaultProfile);
         tripVm.setFuelType(p.defaultFuelType);
-      }
+      },
+      (p) => tripVm.selectOrigin(p as any),
+      (p) => tripVm.selectDestination(p as any),
+      () => tripVm.planTrip()
     );
   }, [
+    tripVm,
     tripVm.addNewVehicle,
     tripVm.removeExistingVehicle,
     tripVm.changeProfile,

@@ -168,17 +168,32 @@ export default function SidePanel({
                   <div className="text-sm font-semibold mb-2">Ubicaciones guardadas</div>
                   <ul className="max-h-40 overflow-auto divide-y">
                     {s.places.map((p) => (
-                      <li key={p.id} className="py-2 text-sm flex items-center justify-between gap-2">
+                      <li
+                        key={p.id}
+                        className="py-2 text-sm flex items-center justify-between gap-2"
+                        onClick={() => vm.applyPlace(p)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') vm.applyPlace(p);
+                        }}
+                        title="Aplicar lugar"
+                      >
                         <div className="truncate">{p.label}</div>
+
                         <button
                           className="text-red-600 hover:underline"
-                          onClick={() => vm.removePlace(p.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            vm.removePlace(p.id);
+                          }}
                           type="button"
                         >
                           Borrar
                         </button>
                       </li>
                     ))}
+
                     {s.places.length === 0 && (
                       <div className="text-xs text-gray-500 py-1">No hay ubicaciones guardadas.</div>
                     )}
@@ -189,17 +204,32 @@ export default function SidePanel({
                   <div className="text-sm font-semibold mb-2">Rutas guardadas</div>
                   <ul className="max-h-44 overflow-auto divide-y">
                     {s.routes.map((r) => (
-                      <li key={r.id} className="py-2 text-sm">
+                      <li
+                        key={r.id}
+                        className="py-2 text-sm"
+                        onClick={() => vm.applySavedRoute(r)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') vm.applySavedRoute(r);
+                        }}
+                        title="Aplicar ruta"
+                      >
                         <div className="truncate">
                           <b>{r.origin.label}</b> → <b>{r.destination.label}</b>
                         </div>
+
                         <div className="text-gray-600 text-xs">
                           {r.profile} · {r.distanceKm.toFixed(1)} km · {Math.round(r.durationMin)} min
                         </div>
+
                         <div className="text-right mt-1">
                           <button
                             className="text-red-600 hover:underline"
-                            onClick={() => vm.removeRoute(r.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              vm.removeRoute(r.id);
+                            }}
                             type="button"
                           >
                             Borrar
@@ -207,6 +237,7 @@ export default function SidePanel({
                         </div>
                       </li>
                     ))}
+
                     {s.routes.length === 0 && (
                       <div className="text-xs text-gray-500 py-1">No hay rutas guardadas.</div>
                     )}
