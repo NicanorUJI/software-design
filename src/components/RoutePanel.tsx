@@ -62,11 +62,11 @@ export default function RoutePanel(props: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="h-9 w-9 rounded-full hover:bg-black/5 flex items-center justify-center"
+            className="h-9 w-9 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center"
             aria-label="close route panel"
             title="Close"
           >
-            ✕
+            X
           </button>
         )}
       </div>

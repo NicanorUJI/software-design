@@ -13,10 +13,8 @@ interface Props {
   canCalculateRoute: boolean;
   loading: boolean;
 
-  // error del cálculo de ruta (del VM principal)
+  // error del cálculo de ruta
   error?: string | null;
-
-  // para resetear desde fuera (ej: al cerrar RoutePanel)
   resetKey?: number;
 }
 
@@ -39,7 +37,6 @@ export default function SearchBar({
     vm.reset();
   }, [resetKey, vm]);
 
-  // Cerrar dropdown si clic fuera
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (!containerRef.current) return;
@@ -48,21 +45,19 @@ export default function SearchBar({
     document.addEventListener('click', onClick);
     return () => document.removeEventListener('click', onClick);
   }, [vm]);
-
-  // Error a mostrar: prioriza el error de ruta, luego el de búsqueda
   const uiError = error ?? s.error;
 
   return (
     <div ref={containerRef} className="w-[640px] max-w-[92vw]">
       <div className="bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-black/5 overflow-hidden">
-        {/* Inputs + Actions */}
+        {/* Inputs */}
         <div className="flex items-stretch">
           {/* Inputs */}
           <div className="flex-1 p-2">
             <div className="rounded-xl bg-black/5 p-2 space-y-2">
               {/* Origin */}
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">
+                <div className="h-5 w-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">
                 </div>
 
                 <input
@@ -78,7 +73,7 @@ export default function SearchBar({
 
               {/* Destination */}
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">
+                <div className="h-6 w-6 text-white text-xl flex items-center justify-center">
                   📍
                 </div>
 
@@ -129,7 +124,6 @@ export default function SearchBar({
           </div>
         )}
 
-        {/* Searching / empty feedback (opcional) */}
         {s.searching && (
           <div className="px-3 pb-2 text-xs text-gray-500">
             Searching…
