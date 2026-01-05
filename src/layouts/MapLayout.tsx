@@ -4,23 +4,38 @@ import MapView from '../components/MapView';
 import RoutePanel from '../components/RoutePanel';
 import SidePanel from '../components/SidePanel';
 import HamburgerMenu from '../components/HamburgerMenu';
-import { useTripPlannerViewModel } from '../viewModels/useTripPlannerViewModel';
 import { SearchBarViewModel } from '../viewModels/SearchBarViewModel';
 import { SidePanelViewModel } from '../viewModels/SidePanelViewModel';
-import { getRoutingService } from '../services/serviceRegistry';
 import { useNavigate } from 'react-router-dom';
+import { useViewModel } from '../viewModels/base/useViewModel';
+import {TripPlannerViewModel} from "../viewModels/TripPlannerViewModel";
+import { getTripPlannerFacade, getRoutingService } from '../services/serviceRegistry';
+import { listVehicles, addVehicle, removeVehicle } from '../services/repos/vehiclesRepo';
 
 import { addPlace, listPlaces, removePlace } from '../services/repos/placesRepo';
 import { addRoute, listRoutes, removeRoute } from '../services/repos/routesRepo';
 import { getPreferences, setPreferences, updatePreferences } from '../services/repos/preferencesRepo';
 
 export default function MapLayout() {
-  const tripVm = useTripPlannerViewModel();
 
   const [sideOpen, setSideOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
 
   const navigate = useNavigate();
+
+  const tripVm = useMemo(() => {
+    return new TripPlannerViewModel(
+      getTripPlannerFacade(),
+      { list: listVehicles, add: addVehicle, remove: removeVehicle },
+      { get: getPreferences }
+    );
+  }, []);
+
+  const trip = useViewModel(tripVm);
+  
+  useEffect(() => {
+    return () => tripVm.dispose();
+  }, [tripVm]);
 
   const searchBarVm = useMemo(() => {
     return new SearchBarViewModel(
@@ -28,7 +43,7 @@ export default function MapLayout() {
       tripVm.selectOrigin,
       tripVm.selectDestination
     );
-  }, [tripVm.selectOrigin, tripVm.selectDestination]);
+  }, [tripVm]);
 
   useEffect(() => {
     return () => searchBarVm.dispose();
@@ -54,12 +69,11 @@ export default function MapLayout() {
         set: setPreferences,
         update: updatePreferences,
       },
-      // Vehicles (delegamos al Trip VM para mantener un source-of-truth único)
+      // Vehicles
       {
         add: tripVm.addNewVehicle,
         remove: tripVm.removeExistingVehicle,
       },
-      // Notificar cambios de prefs al Trip VM
       (p) => {
         tripVm.changeProfile(p.defaultProfile);
         tripVm.setFuelType(p.defaultFuelType);
@@ -80,9 +94,9 @@ export default function MapLayout() {
     <div className="relative w-screen h-screen overflow-hidden">
       <div className="absolute inset-0 z-0">
         <MapView
-          origin={tripVm.origin?.position ?? null}
-          destination={tripVm.destination?.position ?? null}
-          route={tripVm.route}
+          origin={trip.origin?.position ?? null}
+          destination={trip.destination?.position ?? null}
+          route={trip.route}
         />
       </div>
 
@@ -93,12 +107,12 @@ export default function MapLayout() {
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500]">
         <SearchBar
           vm={searchBarVm}
-          originLabel={tripVm.origin?.label}
-          destinationLabel={tripVm.destination?.label}
+          originLabel={trip.origin?.label}
+          destinationLabel={trip.destination?.label}
           onCalculateRoute={tripVm.planTrip}
           canCalculateRoute={tripVm.canRoute}
-          loading={tripVm.loading}
-          error={tripVm.error}
+          loading={trip.loading}
+          error={trip.error}
           resetKey={resetKey}
         />
       </div>
@@ -108,47 +122,47 @@ export default function MapLayout() {
         open={sideOpen}
         onClose={() => setSideOpen(false)}
         currentOrigin={
-          tripVm.origin ? { label: tripVm.origin.label, position: tripVm.origin.position } : null
+          trip.origin ? { label: trip.origin.label, position: trip.origin.position } : null
         }
         currentDestination={
-          tripVm.destination
-            ? { label: tripVm.destination.label, position: tripVm.destination.position }
+          trip.destination
+            ? { label: trip.destination.label, position: trip.destination.position }
             : null
         }
         currentRoute={
-          tripVm.route
+          trip.route
             ? {
-                distanceKm: tripVm.route.summary.distanceKm,
-                durationMin: tripVm.route.summary.durationMin,
-                profile: tripVm.profile,
+                distanceKm: trip.route.summary.distanceKm,
+                durationMin: trip.route.summary.durationMin,
+                profile: trip.profile,
               }
             : null
         }
-        vehicles={tripVm.vehicles}
+        vehicles={trip.vehicles}
         onGoProfile={() => navigate('/profile')}
       />
 
-      {tripVm.route && !tripVm.error && (
+      {trip.route && !trip.error && (
         <div className="absolute top-4 right-4 max-w-sm w-[340px] space-y-2 z-[500]">
           <RoutePanel
-            profile={tripVm.profile}
+            profile={trip.profile}
             onProfileChange={tripVm.changeProfile}
             canRoute={tripVm.canRoute}
-            loading={tripVm.loading}
-            error={tripVm.error}
+            loading={trip.loading}
+            error={trip.error}
             onRouteClick={tripVm.planTrip}
-            originLabel={tripVm.origin?.label ?? ''}
-            destinationLabel={tripVm.destination?.label ?? ''}
-            summary={tripVm.route?.summary ?? null}
-            costText={tripVm.costText}
-            vehicles={tripVm.vehicles}
-            selectedVehicleId={tripVm.selectedVehicleId}
+            originLabel={trip.origin?.label ?? ''}
+            destinationLabel={trip.destination?.label ?? ''}
+            summary={trip.route?.summary ?? null}
+            costText={trip.costText}
+            vehicles={trip.vehicles}
+            selectedVehicleId={trip.selectedVehicleId}
             onVehicleChange={tripVm.changeVehicle}
-            fuelType={tripVm.fuelType}
+            fuelType={trip.fuelType}
             onFuelTypeChange={tripVm.setFuelType}
             showCalculateButton={false}
             onClose={() => {
-              tripVm.resetTrip?.(); // si existe
+              tripVm.resetTrip();
               setResetKey((k) => k + 1);
             }}
           />
