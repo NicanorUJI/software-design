@@ -4,6 +4,7 @@ import { type ReactNode } from 'react';
 import HomePage from '../pages/HomePage';
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
+import ProfilePage from '../pages/ProfilePage';
 import { useAuth } from '../services/AuthContext';
 
 function Protected({ children }: { children: ReactNode }) {
@@ -23,6 +24,14 @@ export default function AppRouter() {
         element={
           <Protected>
             <HomePage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <Protected>
+            <ProfilePage />
           </Protected>
         }
       />

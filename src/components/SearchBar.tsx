@@ -96,7 +96,7 @@ export default function SearchBar({
   };
 
   const activePlaceholder = useMemo(() => {
-    return activeField === 'origin' ? 'Start location' : 'Destination';
+    return activeField === 'origin' ? 'Origen' : 'Destino';
   }, [activeField]);
 
   return (
@@ -105,21 +105,19 @@ export default function SearchBar({
       className="w-[640px] max-w-[92vw]"
     >
       <div className="bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-black/5 overflow-hidden">
-        {/* Row: inputs + actions */}
         <div className="flex items-stretch">
           {/* Inputs column */}
           <div className="flex-1 p-2">
             <div className="rounded-xl bg-black/5 p-2 space-y-2">
               {/* Origin */}
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-black text-white text-xs flex items-center justify-center">
-                  A
+                <div className="h-6 w-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">
                 </div>
 
                 <input
                   className="flex-1 bg-transparent outline-none text-sm"
-                  placeholder="Start location"
-                  value={activeField === 'origin' ? originQuery : (originLabel ?? '')}
+                  placeholder="Origen"
+                  value={activeField === 'origin' && originQuery ? originQuery : (originLabel ?? originQuery)}
                   onChange={(e) => {
                     setActiveField('origin');
                     setOriginQuery(e.target.value);
@@ -132,14 +130,14 @@ export default function SearchBar({
 
               {/* Destination */}
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-black text-white text-xs flex items-center justify-center">
-                  B
+                <div className="h-6 w-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">
+                  📍
                 </div>
 
                 <input
                   className="flex-1 bg-transparent outline-none text-sm"
-                  placeholder="Destination"
-                  value={activeField === 'destination' ? destQuery : (destinationLabel ?? '')}
+                  placeholder="Destino"
+                  value={activeField === 'destination' && destQuery ? destQuery : (destinationLabel ?? destQuery)}
                   onChange={(e) => {
                     setActiveField('destination');
                     setDestQuery(e.target.value);
@@ -157,7 +155,7 @@ export default function SearchBar({
               type="button"
               onClick={onCalculateRoute}
               disabled={!canCalculateRoute || loading}
-              className="h-10 w-10 rounded-xl bg-black text-white disabled:opacity-40 flex items-center justify-center"
+              className="h-10 w-10 rounded-xl bg-blue-600 text-white disabled:opacity-40 flex items-center justify-center"
               title="Calculate route"
               aria-label="calculate route"
             >
