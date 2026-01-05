@@ -62,7 +62,7 @@ export default function SearchBar({
 
                 <input
                   className="flex-1 bg-transparent outline-none text-sm"
-                  placeholder="Start location"
+                  placeholder="Origen"
                   value={s.activeField === 'origin' && s.originQuery ? s.originQuery : (originLabel ?? s.originQuery)}
                   onFocus={() => vm.setActiveField('origin')}
                   onChange={(e) => vm.setOriginQuery(e.target.value)}
@@ -79,7 +79,7 @@ export default function SearchBar({
 
                 <input
                   className="flex-1 bg-transparent outline-none text-sm"
-                  placeholder="Destination"
+                  placeholder="Destino"
                   value={s.activeField === 'destination' && s.destinationQuery ? s.destinationQuery : (destinationLabel ?? s.destinationQuery)}
                   onFocus={() => vm.setActiveField('destination')}
                   onChange={(e) => vm.setDestinationQuery(e.target.value)}
@@ -126,7 +126,7 @@ export default function SearchBar({
 
         {s.searching && (
           <div className="px-3 pb-2 text-xs text-gray-500">
-            Searching…
+            Buscando…
           </div>
         )}
       </div>

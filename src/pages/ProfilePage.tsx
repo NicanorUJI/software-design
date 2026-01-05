@@ -84,7 +84,7 @@ export default function ProfilePage() {
               onClick={() => nav('/')}
               className="text-sm text-blue-600 hover:underline"
             >
-              ← Back to maps
+              ← Volver al mapa
             </button>
 
             <div className="flex justify-center">
@@ -111,7 +111,7 @@ export default function ProfilePage() {
               className="text-sm text-red-600 hover:underline disabled:opacity-50"
               title="Delete account"
             >
-              Delete account
+              Borrar cuenta
             </button>
           </div>
 
@@ -129,7 +129,7 @@ export default function ProfilePage() {
               className="mt-3 text-sm text-blue-600 hover:underline disabled:opacity-50"
               title="Logout"
             >
-              Logout
+              Cerrar sesión
             </button>
           </div>
 

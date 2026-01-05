@@ -38,7 +38,7 @@ export default function RegisterPage() {
           className="space-y-5"
         >
           <div>
-            <label className="block text-sm text-gray-700 mb-2">Email:</label>
+            <label className="block text-sm text-gray-700 mb-2">Correo electrónico:</label>
             <input
               value={s.email}
               onChange={(e) => vm.setEmail(e.target.value)}
@@ -49,7 +49,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-700 mb-2">Password:</label>
+            <label className="block text-sm text-gray-700 mb-2">Contraseña:</label>
             <div className="relative">
               <input
                 type={s.showPw ? 'text' : 'password'}
@@ -62,15 +62,15 @@ export default function RegisterPage() {
                 type="button"
                 onClick={() => vm.toggleShowPw()}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-600 hover:text-gray-900"
-                aria-label={s.showPw ? 'Hide password' : 'Show password'}
+                aria-label={s.showPw ? 'Ocultar contraseña' : 'Mostrar contraseña'}
               >
-                {s.showPw ? 'Hide' : 'Show'}
+                {s.showPw ? 'Ocultar' : 'Mostrar'}
               </button>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-700 mb-2">Confirm password:</label>
+            <label className="block text-sm text-gray-700 mb-2">Confirmar contraseña:</label>
             <input
               type={s.showPw ? 'text' : 'password'}
               value={s.confirmPassword}
@@ -91,12 +91,12 @@ export default function RegisterPage() {
             disabled={!vm.canSubmit}
             className="w-full rounded-full bg-blue-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600"
           >
-            {s.busy ? 'Registering…' : 'Register'}
+            {s.busy ? 'Registrando…' : 'Registrarse'}
           </button>
 
           <div className="text-center">
             <Link to="/login" className="text-sm text-blue-600 hover:underline">
-              Already registered?
+              ¿Ya tienes una cuenta? Inicia sesión
             </Link>
           </div>
         </form>

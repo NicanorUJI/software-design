@@ -50,13 +50,13 @@ export default function RoutePanel(props: Props) {
     showCalculateButton = true,
   } = props;
 
-  const costTitle = profile === 'driving-car' ? 'Estimated fuel cost' : 'Estimated energy';
+  const costTitle = profile === 'driving-car' ? 'Coste estimado de combustible' : 'Energía estimada';
 
   return (
     <div className="bg-white/95 backdrop-blur shadow-xl rounded-2xl p-4 space-y-3 border border-black/5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="text-lg font-semibold">Route</div>
+        <div className="text-lg font-semibold">Ruta</div>
 
         {onClose && (
           <button
@@ -73,36 +73,36 @@ export default function RoutePanel(props: Props) {
 
       <div className="text-sm text-gray-600">
         <div>
-          <span className="font-medium">From:</span> {originLabel || '—'}
+          <span className="font-medium">Origen:</span> {originLabel || '—'}
         </div>
         <div>
-          <span className="font-medium">To:</span> {destinationLabel || '—'}
+          <span className="font-medium">Destino:</span> {destinationLabel || '—'}
         </div>
       </div>
 
       <div className="flex items-center gap-2 text-sm">
-        <label className="font-medium">Mode:</label>
+        <label className="font-medium">Modo:</label>
         <select
           className="border rounded-md px-2 py-1 bg-white"
           value={profile}
           onChange={(e) => onProfileChange(e.target.value as TravelProfile)}
         >
-          <option value="driving-car">Car</option>
-          <option value="cycling-regular">Bike</option>
-          <option value="foot-walking">Foot</option>
+          <option value="driving-car">Coche</option>
+          <option value="cycling-regular">Bicicleta</option>
+          <option value="foot-walking">A pie</option>
         </select>
       </div>
 
       {profile === 'driving-car' && (
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2">
-            <label className="font-medium w-20">Vehicle:</label>
+            <label className="font-medium w-20">Vehículo:</label>
             <select
               className="border rounded-md px-2 py-1 flex-1 bg-white"
               value={selectedVehicleId ?? ''}
               onChange={(e) => onVehicleChange?.(e.target.value ? e.target.value : null)}
             >
-              <option value="">No vehicle (avg consumption)</option>
+              <option value="">Sin vehículo (consumo promedio)</option>
               {vehicles?.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.name} ({v.litersPer100} L/100km)
@@ -118,9 +118,9 @@ export default function RoutePanel(props: Props) {
               value={fuelType}
               onChange={(e) => onFuelTypeChange?.(e.target.value as FuelType)}
             >
-              <option value="gasoline95">Gasoline 95</option>
-              <option value="gasoline98">Gasoline 98</option>
-              <option value="diesel">Diesel</option>
+              <option value="gasoline95">Gasolina 95</option>
+              <option value="gasoline98">Gasolina 98</option>
+              <option value="diesel">Diésel</option>
             </select>
           </div>
         </div>
@@ -142,11 +142,11 @@ export default function RoutePanel(props: Props) {
       {summary && !error && (
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="rounded-xl bg-gray-100 p-2">
-            <div className="text-gray-500">Distance</div>
+            <div className="text-gray-500">Distancia</div>
             <div className="text-base font-semibold">{formatKm(summary.distanceKm)}</div>
           </div>
           <div className="rounded-xl bg-gray-100 p-2">
-            <div className="text-gray-500">Duration</div>
+            <div className="text-gray-500">Duración</div>
             <div className="text-base font-semibold">{formatDuration(summary.durationMin)}</div>
           </div>
         </div>
