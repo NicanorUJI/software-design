@@ -8,6 +8,7 @@ import { useTripPlannerViewModel } from '../viewModels/useTripPlannerViewModel';
 import { SearchBarViewModel } from '../viewModels/SearchBarViewModel';
 import { SidePanelViewModel } from '../viewModels/SidePanelViewModel';
 import { getRoutingService } from '../services/serviceRegistry';
+import { useNavigate } from 'react-router-dom';
 
 import { addPlace, listPlaces, removePlace } from '../services/repos/placesRepo';
 import { addRoute, listRoutes, removeRoute } from '../services/repos/routesRepo';
@@ -18,6 +19,8 @@ export default function MapLayout() {
 
   const [sideOpen, setSideOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
+
+  const navigate = useNavigate();
 
   const searchBarVm = useMemo(() => {
     return new SearchBarViewModel(
@@ -122,6 +125,7 @@ export default function MapLayout() {
             : null
         }
         vehicles={tripVm.vehicles}
+        onGoProfile={() => navigate('/profile')}
       />
 
       {tripVm.route && !tripVm.error && (

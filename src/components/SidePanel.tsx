@@ -1,4 +1,3 @@
-// src/components/SidePanel.tsx
 import { useEffect } from 'react';
 import type { Vehicle } from '../types/domain';
 import type { TravelProfile } from '../types/route';
@@ -11,11 +10,13 @@ type Props = {
   open: boolean;
   onClose: () => void;
 
+  // context desde el trip VM
   currentOrigin: { label: string; position: { lat: number; lng: number } } | null;
   currentDestination: { label: string; position: { lat: number; lng: number } } | null;
   currentRoute: { distanceKm: number; durationMin: number; profile: TravelProfile } | null;
 
   vehicles: Vehicle[];
+  onGoProfile: () => void;
 };
 
 export default function SidePanel({
@@ -26,12 +27,18 @@ export default function SidePanel({
   currentDestination,
   currentRoute,
   vehicles,
+  onGoProfile,
 }: Props) {
   const s = useViewModel(vm);
 
   useEffect(() => {
     vm.init();
   }, [vm]);
+
+  // cuando se abre, vuelve al menú (como Figma)
+  useEffect(() => {
+    if (open) vm.openMenu();
+  }, [open, vm]);
 
   useEffect(() => {
     vm.setContext({
@@ -47,277 +54,266 @@ export default function SidePanel({
 
   if (!open) return null;
 
+  const headerTitle =
+    s.section === 'menu'
+      ? 'Menu'
+      : s.section === 'saved'
+      ? 'Lugares y rutas guardados'
+      : s.section === 'vehicles'
+      ? 'Mis vehículos'
+      : 'Preferencias';
+
   return (
-    <div className="absolute inset-0 z-[800]">
-      {/* overlay */}
-      <button
-        className="absolute inset-0 bg-black/30"
-        onClick={onClose}
-        aria-label="Close side panel overlay"
-        type="button"
-      />
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} aria-hidden="true" />
 
-      {/* panel */}
-      <aside className="absolute top-4 left-4 bottom-4 w-[340px] max-w-[88vw] bg-white/95 backdrop-blur rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-        <header className="flex items-center justify-between px-4 py-3 border-b border-black/10">
-          <button
-            className="h-9 w-9 rounded-xl hover:bg-black/5 flex items-center justify-center"
-            onClick={onClose}
-            aria-label="Close"
-            title="Close"
-            type="button"
-          >
-            ✕
-          </button>
-
-          <div className="font-semibold">FakeMaps</div>
-
-          {s.section !== 'menu' ? (
-            <button
-              className="h-9 px-3 rounded-xl hover:bg-black/5 text-sm"
-              onClick={() => vm.openMenu()}
-              title="Back"
-              type="button"
-            >
-              Back
-            </button>
-          ) : (
-            <div className="w-12" />
-          )}
-        </header>
-
-        <div className="flex-1 overflow-auto p-4">
-          {s.loading && <div className="text-sm text-gray-600">Loading…</div>}
-
-          {!s.loading && s.error && <div className="text-sm text-red-600">{s.error}</div>}
-
-          {!s.loading && !s.error && s.section === 'menu' && (
-            <div className="space-y-2">
-              <MenuButton title="Lugares y rutas guardados" onClick={() => vm.openSaved()} />
-              <MenuButton title="Mis vehículos" onClick={() => vm.openVehicles()} />
-              <MenuButton title="Preferencias" onClick={() => vm.openPreferences()} />
-              <MenuButton title="Perfil (próximamente)" onClick={() => {}} disabled />
+      {/* Panel */}
+      <aside className="fixed top-4 left-4 z-50 w-[340px] max-w-[92vw]">
+        <div
+          className="bg-white/95 backdrop-blur shadow-xl rounded-2xl border border-black/5 overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-black/5">
+            <div className="flex items-center gap-2">
+              {s.section !== 'menu' && (
+                <button
+                  type="button"
+                  onClick={() => vm.openMenu()}
+                  className="h-9 w-9 rounded-full hover:bg-black/5 flex items-center justify-center"
+                  aria-label="back"
+                  title="Back"
+                >
+                  ←
+                </button>
+              )}
+              <div className="text-sm font-semibold">{headerTitle}</div>
             </div>
-          )}
 
-          {!s.loading && !s.error && s.section === 'saved' && (
-            <div className="space-y-5">
-              <SectionTitle title="Guardados" />
+            <button
+              onClick={onClose}
+              className="h-9 w-9 rounded-full hover:bg-black/5 flex items-center justify-center"
+              aria-label="close"
+              type="button"
+              title="Close"
+            >
+              ✕
+            </button>
+          </div>
 
+          <div className="p-3">
+            {/* Loading/Error */}
+            {s.loading && <div className="text-sm text-gray-600">Loading…</div>}
+            {!s.loading && s.error && <div className="text-sm text-red-600">{s.error}</div>}
+
+            {/* MENU (3 opciones como Figma) */}
+            {!s.loading && !s.error && s.section === 'menu' && (
               <div className="space-y-2">
-                <div className="text-sm font-medium">Quick save</div>
-                <div className="flex gap-2">
-                  <button
-                    className="px-3 py-2 rounded-xl bg-black text-white text-sm disabled:opacity-40"
-                    onClick={() => vm.saveOrigin()}
-                    disabled={!vm.canSaveOrigin}
-                    type="button"
-                  >
-                    Save A
-                  </button>
-                  <button
-                    className="px-3 py-2 rounded-xl bg-black text-white text-sm disabled:opacity-40"
-                    onClick={() => vm.saveDestination()}
-                    disabled={!vm.canSaveDestination}
-                    type="button"
-                  >
-                    Save B
-                  </button>
-                  <button
-                    className="px-3 py-2 rounded-xl bg-black text-white text-sm disabled:opacity-40"
-                    onClick={() => vm.saveRoute()}
-                    disabled={!vm.canSaveRoute}
-                    type="button"
-                  >
-                    Save route
-                  </button>
-                </div>
+                <MenuItem
+                  label="Lugares y rutas guardados"
+                  onClick={() => vm.openSaved()}
+                  icon={<span className="text-blue-600">📍</span>}
+                />
+                <MenuItem
+                  label="Mis vehículos"
+                  onClick={() => vm.openVehicles()}
+                  icon={<span className="text-blue-600">🚗</span>}
+                />
+                <MenuItem
+                  label="Perfil"
+                  onClick={() => {
+                    onClose();
+                    onGoProfile();
+                  }}
+                  icon={<span className="text-blue-600">👤</span>}
+                />
               </div>
+            )}
 
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Ubicaciones guardadas</div>
-                <div className="rounded-xl border border-black/10 overflow-hidden">
-                  <ul className="max-h-40 overflow-auto divide-y divide-black/10">
+            {/* SAVED */}
+            {!s.loading && !s.error && s.section === 'saved' && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-black/5 bg-white p-3">
+                  <div className="text-sm font-semibold mb-2">Guardar rápido</div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className="px-3 py-2 rounded-xl bg-blue-600 text-white disabled:opacity-40"
+                      onClick={() => vm.saveOrigin()}
+                      disabled={!vm.canSaveOrigin}
+                      type="button"
+                    >
+                      Guardar A
+                    </button>
+                    <button
+                      className="px-3 py-2 rounded-xl bg-blue-600 text-white disabled:opacity-40"
+                      onClick={() => vm.saveDestination()}
+                      disabled={!vm.canSaveDestination}
+                      type="button"
+                    >
+                      Guardar B
+                    </button>
+                    <button
+                      className="px-3 py-2 rounded-xl bg-blue-600 text-white disabled:opacity-40"
+                      onClick={() => vm.saveRoute()}
+                      disabled={!vm.canSaveRoute}
+                      type="button"
+                    >
+                      Guardar ruta
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-black/5 bg-white p-3">
+                  <div className="text-sm font-semibold mb-2">Ubicaciones guardadas</div>
+                  <ul className="max-h-40 overflow-auto divide-y">
                     {s.places.map((p) => (
-                      <li key={p.id} className="px-3 py-2 flex items-center justify-between gap-2">
-                        <div className="truncate text-sm">{p.label}</div>
+                      <li key={p.id} className="py-2 text-sm flex items-center justify-between gap-2">
+                        <div className="truncate">{p.label}</div>
                         <button
-                          className="text-sm text-red-600 hover:underline"
+                          className="text-red-600 hover:underline"
                           onClick={() => vm.removePlace(p.id)}
                           type="button"
                         >
-                          Remove
+                          Borrar
                         </button>
                       </li>
                     ))}
                     {s.places.length === 0 && (
-                      <li className="px-3 py-2 text-xs text-gray-500">No hay ubicaciones guardadas.</li>
+                      <div className="text-xs text-gray-500 py-1">No hay ubicaciones guardadas.</div>
                     )}
                   </ul>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Rutas guardadas</div>
-                <div className="rounded-xl border border-black/10 overflow-hidden">
-                  <ul className="max-h-56 overflow-auto divide-y divide-black/10">
+                <div className="rounded-2xl border border-black/5 bg-white p-3">
+                  <div className="text-sm font-semibold mb-2">Rutas guardadas</div>
+                  <ul className="max-h-44 overflow-auto divide-y">
                     {s.routes.map((r) => (
-                      <li key={r.id} className="px-3 py-2">
-                        <div className="text-sm truncate">
+                      <li key={r.id} className="py-2 text-sm">
+                        <div className="truncate">
                           <b>{r.origin.label}</b> → <b>{r.destination.label}</b>
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-gray-600 text-xs">
                           {r.profile} · {r.distanceKm.toFixed(1)} km · {Math.round(r.durationMin)} min
                         </div>
-                        <div className="pt-1 text-right">
+                        <div className="text-right mt-1">
                           <button
-                            className="text-sm text-red-600 hover:underline"
+                            className="text-red-600 hover:underline"
                             onClick={() => vm.removeRoute(r.id)}
                             type="button"
                           >
-                            Remove
+                            Borrar
                           </button>
                         </div>
                       </li>
                     ))}
                     {s.routes.length === 0 && (
-                      <li className="px-3 py-2 text-xs text-gray-500">No hay rutas guardadas.</li>
+                      <div className="text-xs text-gray-500 py-1">No hay rutas guardadas.</div>
                     )}
                   </ul>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {!s.loading && !s.error && s.section === 'vehicles' && (
-            <div className="space-y-5">
-              <SectionTitle title="Mis vehículos" />
+            {/* VEHICLES */}
+            {!s.loading && !s.error && s.section === 'vehicles' && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-black/5 bg-white p-3">
+                  <div className="text-sm font-semibold mb-2">Vehículos guardados</div>
 
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Agregar vehículo</div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <input
-                    className="border border-black/10 rounded-xl px-3 py-2 col-span-2 text-sm outline-none"
-                    placeholder="Nombre (p.ej., Golf)"
-                    value={s.vehName}
-                    onChange={(e) => vm.setVehName(e.target.value)}
-                  />
-                  <select
-                    className="border border-black/10 rounded-xl px-3 py-2 text-sm"
-                    value={s.vehFuelType}
-                    onChange={(e) => vm.setVehFuelType(e.target.value as any)}
-                  >
-                    <option value="gasoline95">95</option>
-                    <option value="gasoline98">98</option>
-                    <option value="diesel">Diesel</option>
-                  </select>
-
-                  <input
-                    className="border border-black/10 rounded-xl px-3 py-2 col-span-2 text-sm outline-none"
-                    placeholder="L/100km (p.ej., 6.5)"
-                    value={s.vehLitersPer100}
-                    onChange={(e) => vm.setVehLitersPer100(e.target.value)}
-                    inputMode="decimal"
-                  />
-                  <button
-                    className="rounded-xl bg-black text-white text-sm disabled:opacity-40"
-                    onClick={() => vm.addVehicle()}
-                    disabled={!vm.canAddVehicle}
-                    type="button"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Vehículos guardados</div>
-                <div className="rounded-xl border border-black/10 overflow-hidden">
-                  <ul className="max-h-64 overflow-auto divide-y divide-black/10">
+                  <ul className="max-h-40 overflow-auto divide-y">
                     {s.vehicles.map((v) => (
-                      <li key={v.id} className="px-3 py-2 flex items-center justify-between gap-2">
-                        <div className="truncate text-sm">
+                      <li key={v.id} className="py-2 text-sm flex items-center justify-between gap-2">
+                        <div className="truncate">
                           <b>{v.name}</b> — {v.fuelType}, {v.litersPer100} L/100km
                         </div>
                         <button
-                          className="text-sm text-red-600 hover:underline"
+                          className="text-red-600 hover:underline"
                           onClick={() => vm.removeVehicle(v.id)}
                           type="button"
                         >
-                          Remove
+                          Borrar
                         </button>
                       </li>
                     ))}
                     {s.vehicles.length === 0 && (
-                      <li className="px-3 py-2 text-xs text-gray-500">No hay vehículos guardados.</li>
+                      <div className="text-xs text-gray-500 py-1">No hay vehículos guardados.</div>
                     )}
                   </ul>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {!s.loading && !s.error && s.section === 'preferences' && (
-            <div className="space-y-5">
-              <SectionTitle title="Preferencias" />
+                <div className="rounded-2xl border border-black/5 bg-white text-gray-900 p-3">
+                  <div className="text-sm font-semibold mb-2">Agregar vehículo</div>
 
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <label className="w-28 text-gray-700">Modo:</label>
-                  <select
-                    className="border border-black/10 rounded-xl px-3 py-2 flex-1"
-                    value={s.prefs?.defaultProfile ?? 'driving-car'}
-                    onChange={(e) => vm.setDefaultProfile(e.target.value as any)}
-                  >
-                    <option value="driving-car">Automóvil</option>
-                    <option value="cycling-regular">Bicicleta</option>
-                    <option value="foot-walking">A pie</option>
-                  </select>
+                  <div className="space-y-2">
+                    <input
+                      className="w-full border border-black rounded-xl px-3 py-2 text-sm text-gray-900"
+                      placeholder="Nombre"
+                      value={s.vehName}
+                      onChange={(e) => vm.setVehName(e.target.value)}
+                    />
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        className="w-full border border-black rounded-xl px-3 py-2 text-sm text-gray-900"
+                        value={s.vehFuelType}
+                        onChange={(e) => vm.setVehFuelType(e.target.value as any)}
+                      >
+                        <option value="gasoline95">Gasolina 95</option>
+                        <option value="gasoline98">Gasolina 98</option>
+                        <option value="diesel">Diésel</option>
+                      </select>
+
+                      <input
+                        className="w-full border border-black rounded-xl px-3 py-2 text-sm text-gray-900"
+                        placeholder="L/100km (ej: 6.5)"
+                        value={s.vehLitersPer100}
+                        onChange={(e) => vm.setVehLitersPer100(e.target.value)}
+                        inputMode="decimal"
+                      />
+                    </div>
+
+                    <button
+                      className="w-full rounded-xl py-2 bg-white text-blue-700 font-semibold disabled:opacity-60"
+                      onClick={() => vm.addVehicle()}
+                      disabled={!vm.canAddVehicle}
+                      type="button"
+                    >
+                      Agregar
+                    </button>
+                  </div>
                 </div>
-
-                <div className="flex items-center gap-2 text-sm">
-                  <label className="w-28 text-gray-700">Combustible:</label>
-                  <select
-                    className="border border-black/10 rounded-xl px-3 py-2 flex-1"
-                    value={s.prefs?.defaultFuelType ?? 'gasoline95'}
-                    onChange={(e) => vm.setDefaultFuelType(e.target.value as any)}
-                  >
-                    <option value="gasoline95">Gasolina 95</option>
-                    <option value="gasoline98">Gasolina 98</option>
-                    <option value="diesel">Diesel</option>
-                  </select>
-                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </aside>
-    </div>
+    </>
   );
 }
 
-function MenuButton({
-  title,
+function MenuItem({
+  label,
   onClick,
-  disabled,
+  icon,
 }: {
-  title: string;
+  label: string;
   onClick: () => void;
-  disabled?: boolean;
+  icon: React.ReactNode;
 }) {
   return (
     <button
-      className="w-full text-left px-4 py-3 rounded-2xl border border-black/10 hover:bg-black/5 disabled:opacity-50 disabled:hover:bg-transparent"
-      onClick={onClick}
-      disabled={disabled}
       type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-black/5 transition text-left"
     >
-      <div className="text-sm font-medium">{title}</div>
+      <div className="h-10 w-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+        {icon}
+      </div>
+      <div className="flex-1">
+        <div className="text-sm font-semibold">{label}</div>
+      </div>
+      <div className="text-gray-400">›</div>
     </button>
   );
-}
-
-function SectionTitle({ title }: { title: string }) {
-  return <div className="text-base font-semibold">{title}</div>;
 }
