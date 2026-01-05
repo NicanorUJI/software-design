@@ -1,21 +1,43 @@
 // src/services/repos/preferencesRepo.ts
-import { getDoc, ref, setDoc, updateDoc } from '../firestoreHelpers';
+import { getDoc, ref, setDoc } from '../firestoreHelpers';
 import type { Preferences } from '../../types/domain';
 
+const ROOT = 'users';
 const COLLECTION = 'preferences';
 const DEFAULT_ID = 'default';
 
-export async function getPreferences(): Promise<Preferences | null> {
-  const snap = await getDoc(ref(COLLECTION, DEFAULT_ID));
+function assertUid(uid: string) {
+  if (!uid) throw new Error('Missing user id');
+}
+
+function prefRef(uid: string) {
+  return ref(ROOT, uid, COLLECTION, DEFAULT_ID);
+}
+
+type StoredPreferences = Omit<Preferences, 'id'>;
+
+export async function getPreferences(uid: string): Promise<Preferences | null> {
+  assertUid(uid);
+
+  const snap = await getDoc(prefRef(uid));
   if (!snap.exists()) return null;
-  const data = snap.data() as Preferences;
+
+  const data = snap.data() as StoredPreferences;
   return { ...data, id: DEFAULT_ID };
 }
 
-export async function setPreferences(p: Preferences): Promise<void> {
-  await setDoc(ref(COLLECTION, DEFAULT_ID), p);
+export async function setPreferences(uid: string, p: Preferences): Promise<void> {
+  assertUid(uid);
+
+  const { id: _ignore, ...toStore } = p;
+  await setDoc(prefRef(uid), toStore);
 }
 
-export async function updatePreferences(patch: Partial<Preferences>): Promise<void> {
-  await updateDoc(ref(COLLECTION, DEFAULT_ID), patch as any);
+export async function updatePreferences(uid: string, patch: Partial<Preferences>): Promise<void> {
+  assertUid(uid);
+
+  // Evita guardar "id" como campo y evita que falle si el doc no existe.
+  const { id: _ignore, ...toStore } = patch;
+
+  await setDoc(prefRef(uid), toStore, { merge: true });
 }

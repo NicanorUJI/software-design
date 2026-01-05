@@ -8,15 +8,18 @@ import { SearchBarViewModel } from '../viewModels/SearchBarViewModel';
 import { SidePanelViewModel } from '../viewModels/SidePanelViewModel';
 import { useNavigate } from 'react-router-dom';
 import { useViewModel } from '../viewModels/base/useViewModel';
-import {TripPlannerViewModel} from "../viewModels/TripPlannerViewModel";
+import { TripPlannerViewModel } from '../viewModels/TripPlannerViewModel';
 import { getTripPlannerFacade, getRoutingService } from '../services/serviceRegistry';
 import { listVehicles, addVehicle, removeVehicle } from '../services/repos/vehiclesRepo';
-
 import { addPlace, listPlaces, removePlace } from '../services/repos/placesRepo';
 import { addRoute, listRoutes, removeRoute } from '../services/repos/routesRepo';
 import { getPreferences, setPreferences, updatePreferences } from '../services/repos/preferencesRepo';
 
+import { useAuth } from '../services/AuthContext';
+
 export default function MapLayout() {
+  const { user } = useAuth();
+  const uid = user?.uid;
 
   const [sideOpen, setSideOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
@@ -24,25 +27,27 @@ export default function MapLayout() {
   const navigate = useNavigate();
 
   const tripVm = useMemo(() => {
+    if (!uid) throw new Error('No user');
+
     return new TripPlannerViewModel(
       getTripPlannerFacade(),
-      { list: listVehicles, add: addVehicle, remove: removeVehicle },
-      { get: getPreferences }
+      {
+        list: () => listVehicles(uid),
+        add: (v) => addVehicle(uid, v),
+        remove: (id) => removeVehicle(uid, id),
+      },
+      { get: () => getPreferences(uid) }
     );
-  }, []);
+  }, [uid]);
 
   const trip = useViewModel(tripVm);
-  
+
   useEffect(() => {
     return () => tripVm.dispose();
   }, [tripVm]);
 
   const searchBarVm = useMemo(() => {
-    return new SearchBarViewModel(
-      getRoutingService(),
-      tripVm.selectOrigin,
-      tripVm.selectDestination
-    );
+    return new SearchBarViewModel(getRoutingService(), tripVm.selectOrigin, tripVm.selectDestination);
   }, [tripVm]);
 
   useEffect(() => {
@@ -50,26 +55,28 @@ export default function MapLayout() {
   }, [searchBarVm]);
 
   const sidePanelVm = useMemo(() => {
+    if (!uid) throw new Error('No user');
+
     return new SidePanelViewModel(
       // Places
       {
-        list: listPlaces,
-        add: addPlace,
-        remove: removePlace,
+        list: () => listPlaces(uid),
+        add: (p) => addPlace(uid, p),
+        remove: (id) => removePlace(uid, id),
       },
       // Routes
       {
-        list: listRoutes,
-        add: addRoute,
-        remove: removeRoute,
+        list: () => listRoutes(uid),
+        add: (r) => addRoute(uid, r),
+        remove: (id) => removeRoute(uid, id),
       },
       // Preferences
       {
-        get: getPreferences,
-        set: setPreferences,
-        update: updatePreferences,
+        get: () => getPreferences(uid),
+        set: (p) => setPreferences(uid, p),
+        update: (patch) => updatePreferences(uid, patch as any),
       },
-      // Vehicles
+      // Vehicles (delegado al TripPlannerVM)
       {
         add: tripVm.addNewVehicle,
         remove: tripVm.removeExistingVehicle,
@@ -83,6 +90,7 @@ export default function MapLayout() {
       () => tripVm.planTrip()
     );
   }, [
+    uid,
     tripVm,
     tripVm.addNewVehicle,
     tripVm.removeExistingVehicle,
@@ -125,13 +133,9 @@ export default function MapLayout() {
         vm={sidePanelVm}
         open={sideOpen}
         onClose={() => setSideOpen(false)}
-        currentOrigin={
-          trip.origin ? { label: trip.origin.label, position: trip.origin.position } : null
-        }
+        currentOrigin={trip.origin ? { label: trip.origin.label, position: trip.origin.position } : null}
         currentDestination={
-          trip.destination
-            ? { label: trip.destination.label, position: trip.destination.position }
-            : null
+          trip.destination ? { label: trip.destination.label, position: trip.destination.position } : null
         }
         currentRoute={
           trip.route

@@ -1,5 +1,5 @@
 // src/pages/ProfilePage.tsx
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/AuthContext';
 import * as authService from '../services/auth';
@@ -15,31 +15,49 @@ import bgMap from '../assests/map-bg.png';
 
 export default function ProfilePage() {
   const nav = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
 
-  const userRef = useRef(user);
+  // Si todavía está resolviendo auth, no intentes cargar prefs.
+  if (loading) {
+    return (
+      <div className="min-h-screen w-screen flex items-center justify-center bg-slate-100">
+        <div className="text-sm text-gray-600">Loading...</div>
+      </div>
+    );
+  }
+
+  // Si no hay usuario, redirigir.
   useEffect(() => {
-    userRef.current = user;
-  }, [user]);
+    if (!user) nav('/login');
+  }, [user, nav]);
+
+  // Si no hay user (y ya no está loading), no renderizar la página.
+  if (!user) return null;
+
+  const uid = user.uid;
 
   const vm = useMemo(() => {
     return new ProfileViewModel(
       {
-        getUserEmail: () => userRef.current?.email ?? null,
+        getUserEmail: () => user.email ?? null,
         logout,
         deleteAccount: async () => {
-          const u = userRef.current;
-          if (!u) throw new Error('No user');
-          await authService.deleteAccount(u);
+          await authService.deleteAccount(user);
         },
       },
       {
-        get: getPreferences,
-        set: setPreferences,
-        update: updatePreferences,
+        get: async () => {
+          return await getPreferences(uid);
+        },
+        set: async (p) => {
+          await setPreferences(uid, p);
+        },
+        update: async (patch) => {
+          await updatePreferences(uid, patch as any);
+        },
       }
     );
-  }, [logout]);
+  }, [uid, user, logout]);
 
   const s = useViewModel(vm);
 
@@ -52,8 +70,8 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen w-screen relative overflow-hidden bg-slate-100">
       <div
-      className="absolute inset-0 bg-cover bg-center"
-      style={{ backgroundImage: `url(${bgMap})` }}
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${bgMap})` }}
       />
       <div className="absolute inset-0 bg-white/5" />
       <div className="absolute inset-0 backdrop-blur-[1px]" />
@@ -68,15 +86,16 @@ export default function ProfilePage() {
             >
               ← Back to maps
             </button>
-            <div className=" flex justify-center">
-            <img
+
+            <div className="flex justify-center">
+              <img
                 src={logo}
                 alt="FakeMaps"
                 className="h-10 w-auto"
                 onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = 'none';
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
                 }}
-            />
+              />
             </div>
 
             <button
@@ -100,6 +119,8 @@ export default function ProfilePage() {
             <div className="h-16 w-16 rounded-full border border-blue-200 bg-blue-50 flex items-center justify-center text-2xl">
               👤
             </div>
+
+            <div className="mt-3 text-lg font-semibold">FakeMaps</div>
 
             <div className="mt-2 text-sm text-gray-700">{s.userEmail ?? '—'}</div>
 
@@ -125,9 +146,7 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="rounded-2xl border border-black/5 bg-white p-4">
-                <div className="text-xs font-semibold text-gray-500 mb-2">
-                  Tipo de transporte
-                </div>
+                <div className="text-xs font-semibold text-gray-500 mb-2">Tipo de transporte</div>
                 <select
                   className="w-full rounded-xl border border-black/10 px-3 py-2 bg-white"
                   value={s.prefs.defaultProfile}

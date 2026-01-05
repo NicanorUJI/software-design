@@ -4,8 +4,8 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 
-export const col = (name: string) => collection(db, name);
-export const ref = (name: string, id: string) => doc(db, name, id);
+export const col = (...pathSegments: string[]) => collection(db, pathSegments.join('/'));
+export const ref = (...pathSegments: string[]) => doc(db, pathSegments.join('/'));
 
 // convert Firebase Timestamp | number -> number
 export function tsToMs(t: Timestamp | number | undefined): number {

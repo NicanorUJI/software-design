@@ -170,7 +170,7 @@ export default function SidePanel({
                     {s.places.map((p) => (
                       <li
                         key={p.id}
-                        className="py-2 text-sm flex items-center justify-between gap-2"
+                        className="py-2 text-sm flex items-center hover:bg-black/5 justify-between gap-2"
                         onClick={() => vm.applyPlace(p)}
                         role="button"
                         tabIndex={0}
@@ -206,7 +206,7 @@ export default function SidePanel({
                     {s.routes.map((r) => (
                       <li
                         key={r.id}
-                        className="py-2 text-sm"
+                        className="py-2 text-sm hover:bg-black/5"
                         onClick={() => vm.applySavedRoute(r)}
                         role="button"
                         tabIndex={0}
