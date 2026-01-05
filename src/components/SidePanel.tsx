@@ -1,450 +1,323 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import type { Place, SavedRoute, Preferences, FuelType, Vehicle } from '../types/domain';
-import { addPlace, listPlaces, removePlace } from '../services/repos/placesRepo';
-import { addRoute, listRoutes, removeRoute } from '../services/repos/routesRepo';
-import { getPreferences, setPreferences, updatePreferences } from '../services/repos/preferencesRepo';
-type PanelView = 'menu' | 'saved' | 'vehicles';
+// src/components/SidePanel.tsx
+import { useEffect } from 'react';
+import type { Vehicle } from '../types/domain';
+import type { TravelProfile } from '../types/route';
+import { useViewModel } from '../viewModels/base/useViewModel';
+import type { SidePanelViewModel } from '../viewModels/SidePanelViewModel';
 
-interface Props {
+type Props = {
+  vm: SidePanelViewModel;
+
   open: boolean;
   onClose: () => void;
 
-  currentOrigin?: { label: string; position: { lat: number; lng: number } } | null;
-  currentDestination?: { label: string; position: { lat: number; lng: number } } | null;
-  currentRoute?: {
-    distanceKm: number;
-    durationMin: number;
-    profile: 'driving-car' | 'cycling-regular' | 'foot-walking';
-  } | null;
+  currentOrigin: { label: string; position: { lat: number; lng: number } } | null;
+  currentDestination: { label: string; position: { lat: number; lng: number } } | null;
+  currentRoute: { distanceKm: number; durationMin: number; profile: TravelProfile } | null;
 
-  onApplyPreferences?: (p: Preferences) => void;
-
-  vehicles?: Vehicle[];
-  onAddVehicle?: (v: Omit<Vehicle, 'id' | 'createdAt'>) => Promise<void>;
-  onRemoveVehicle?: (id: string) => Promise<void>;
-}
+  vehicles: Vehicle[];
+};
 
 export default function SidePanel({
+  vm,
   open,
   onClose,
   currentOrigin,
   currentDestination,
   currentRoute,
-  onApplyPreferences,
   vehicles,
-  onAddVehicle,
-  onRemoveVehicle,
 }: Props) {
-  const navigate = useNavigate();
+  const s = useViewModel(vm);
 
-  const [view, setView] = useState<PanelView>('menu');
-
-  const [places, setPlaces] = useState<Place[]>([]);
-  const [routes, setRoutes] = useState<SavedRoute[]>([]);
-  const [prefs, setPrefs] = useState<Preferences | null>(null);
-
-  // Vehicles form state
-  const [vehName, setVehName] = useState('');
-  const [vehLitersPer100, setVehLitersPer100] = useState('6.5');
-  const [vehFuelType, setVehFuelType] = useState<FuelType>('gasoline95');
-  const vehLitersParsed = useMemo(() => Number(vehLitersPer100), [vehLitersPer100]);
-
-  // Cada vez que se abre, volvemos al menú (como en Figma)
   useEffect(() => {
-    if (open) setView('menu');
-  }, [open]);
+    vm.init();
+  }, [vm]);
 
-  // Cargar data (una vez)
   useEffect(() => {
-    (async () => {
-      try {
-        const [p, r, pr] = await Promise.all([listPlaces(), listRoutes(), getPreferences()]);
-        setPlaces(p);
-        setRoutes(r);
-        setPrefs(pr);
-        if (pr) setVehFuelType(pr.defaultFuelType);
-      } catch {
-        // no-op
-      }
-    })();
-  }, []);
-
-  // Acciones de guardado rápido (para Figma “saved” view)
-  const saveCurrentOrigin = async () => {
-    if (!currentOrigin) return;
-    const p = await addPlace({ label: currentOrigin.label, position: currentOrigin.position });
-    setPlaces((prev) => [p, ...prev]);
-  };
-
-  const saveCurrentDestination = async () => {
-    if (!currentDestination) return;
-    const p = await addPlace({ label: currentDestination.label, position: currentDestination.position });
-    setPlaces((prev) => [p, ...prev]);
-  };
-
-  const saveCurrentRoute = async () => {
-    if (!currentOrigin || !currentDestination || !currentRoute) return;
-
-    const r = await addRoute({
-      origin: { label: currentOrigin.label, position: currentOrigin.position },
-      destination: { label: currentDestination.label, position: currentDestination.position },
-      profile: currentRoute.profile,
-      routeType: 'fastest',
-      distanceKm: currentRoute.distanceKm,
-      durationMin: currentRoute.durationMin,
+    vm.setContext({
+      origin: currentOrigin,
+      destination: currentDestination,
+      route: currentRoute,
     });
+  }, [vm, currentOrigin, currentDestination, currentRoute]);
 
-    setRoutes((prev) => [r, ...prev]);
-  };
+  useEffect(() => {
+    vm.setVehicles(vehicles ?? []);
+  }, [vm, vehicles]);
 
-  const removePlaceItem = async (id: string) => {
-    await removePlace(id);
-    setPlaces((prev) => prev.filter((p) => p.id !== id));
-  };
-
-  const removeRouteItem = async (id: string) => {
-    await removeRoute(id);
-    setRoutes((prev) => prev.filter((r) => r.id !== id));
-  };
-
-  // Si tus preferencias NO van en el panel, puedes borrar esta sección y dejarlo todo para /profile
-  const setDefaultProfile = async (profile: Preferences['defaultProfile']) => {
-    const next: Preferences = {
-      id: 'default',
-      defaultProfile: profile,
-      defaultFuelType: prefs?.defaultFuelType ?? 'gasoline95',
-    };
-    if (prefs) await updatePreferences({ defaultProfile: profile });
-    else await setPreferences(next);
-    setPrefs(next);
-    onApplyPreferences?.(next);
-  };
-
-  const setDefaultFuelType = async (fuelType: FuelType) => {
-    const next: Preferences = {
-      id: 'default',
-      defaultProfile: prefs?.defaultProfile ?? 'driving-car',
-      defaultFuelType: fuelType,
-    };
-    if (prefs) await updatePreferences({ defaultFuelType: fuelType });
-    else await setPreferences(next);
-    setPrefs(next);
-    onApplyPreferences?.(next);
-    setVehFuelType(fuelType);
-  };
-
-  const handleAddVehicle = async () => {
-    const name = vehName.trim();
-    if (!name) return;
-    if (!Number.isFinite(vehLitersParsed) || vehLitersParsed <= 0) return;
-    if (!onAddVehicle) return;
-
-    await onAddVehicle({
-      name,
-      fuelType: vehFuelType,
-      litersPer100: vehLitersParsed,
-    });
-
-    setVehName('');
-    setVehLitersPer100('6.5');
-  };
-
-  const goProfile = () => {
-    onClose();
-    navigate('/profile');
-  };
-
-  const Header = ({ title }: { title: string }) => (
-    <div className="flex items-center justify-between px-3 py-2 border-b border-black/5">
-      <div className="flex items-center gap-2">
-        {view !== 'menu' && (
-          <button
-            type="button"
-            onClick={() => setView('menu')}
-            className="h-9 w-9 rounded-full hover:bg-black/5 flex items-center justify-center"
-            aria-label="back"
-            title="Back"
-          >
-            ←
-          </button>
-        )}
-        <div className="text-sm font-semibold">{title}</div>
-      </div>
-
-      <button
-        onClick={onClose}
-        className="h-9 w-9 rounded-full hover:bg-black/5 flex items-center justify-center"
-        aria-label="close"
-        type="button"
-        title="Close"
-      >
-        ✕
-      </button>
-    </div>
-  );
-
-  const MenuItem = ({
-    label,
-    sublabel,
-    onClick,
-    icon,
-  }: {
-    label: string;
-    sublabel?: string;
-    onClick: () => void;
-    icon: React.ReactNode;
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-black/5 transition text-left"
-    >
-      <div className="h-10 w-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
-        {icon}
-      </div>
-      <div className="flex-1">
-        <div className="text-sm font-semibold">{label}</div>
-        {sublabel && <div className="text-xs text-gray-500">{sublabel}</div>}
-      </div>
-      <div className="text-gray-400">›</div>
-    </button>
-  );
+  if (!open) return null;
 
   return (
-    <>
-      {/* Backdrop */}
-      {open && <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} aria-hidden="true" />}
+    <div className="absolute inset-0 z-[800]">
+      {/* overlay */}
+      <button
+        className="absolute inset-0 bg-black/30"
+        onClick={onClose}
+        aria-label="Close side panel overlay"
+        type="button"
+      />
 
-      {/* Panel */}
-      <aside
-        className={[
-          'fixed top-4 left-4 z-50 w-[340px] max-w-[92vw]',
-          'transition-transform duration-200 ease-out',
-          open ? 'translate-x-0' : '-translate-x-[120%] pointer-events-none',
-        ].join(' ')}
-        role="dialog"
-        aria-modal="true"
-      >
-        <div
-          className="bg-white/95 backdrop-blur shadow-xl rounded-2xl border border-black/5 overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* HEADER (cambia según vista) */}
-          {view === 'menu' && <Header title="Menu" />}
-          {view === 'saved' && <Header title="Saved" />}
-          {view === 'vehicles' && <Header title="My vehicles" />}
+      {/* panel */}
+      <aside className="absolute top-4 left-4 bottom-4 w-[340px] max-w-[88vw] bg-white/95 backdrop-blur rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <header className="flex items-center justify-between px-4 py-3 border-b border-black/10">
+          <button
+            className="h-9 w-9 rounded-xl hover:bg-black/5 flex items-center justify-center"
+            onClick={onClose}
+            aria-label="Close"
+            title="Close"
+            type="button"
+          >
+            ✕
+          </button>
 
-          {/* BODY */}
-          <div className="p-3">
-            {/* MENU view */}
-            {view === 'menu' && (
+          <div className="font-semibold">FakeMaps</div>
+
+          {s.section !== 'menu' ? (
+            <button
+              className="h-9 px-3 rounded-xl hover:bg-black/5 text-sm"
+              onClick={() => vm.openMenu()}
+              title="Back"
+              type="button"
+            >
+              Back
+            </button>
+          ) : (
+            <div className="w-12" />
+          )}
+        </header>
+
+        <div className="flex-1 overflow-auto p-4">
+          {s.loading && <div className="text-sm text-gray-600">Loading…</div>}
+
+          {!s.loading && s.error && <div className="text-sm text-red-600">{s.error}</div>}
+
+          {!s.loading && !s.error && s.section === 'menu' && (
+            <div className="space-y-2">
+              <MenuButton title="Lugares y rutas guardados" onClick={() => vm.openSaved()} />
+              <MenuButton title="Mis vehículos" onClick={() => vm.openVehicles()} />
+              <MenuButton title="Preferencias" onClick={() => vm.openPreferences()} />
+              <MenuButton title="Perfil (próximamente)" onClick={() => {}} disabled />
+            </div>
+          )}
+
+          {!s.loading && !s.error && s.section === 'saved' && (
+            <div className="space-y-5">
+              <SectionTitle title="Guardados" />
+
               <div className="space-y-2">
-                <MenuItem
-                  label="Lugares y rutas guardados"
-                  sublabel="Ver, borrar y guardar rutas/lugares"
-                  onClick={() => setView('saved')}
-                  icon={<span className="text-blue-600">📍</span>}
-                />
-                <MenuItem
-                  label="Mis vehículos"
-                  sublabel="Gestiona tus vehículos"
-                  onClick={() => setView('vehicles')}
-                  icon={<span className="text-blue-600">🚗</span>}
-                />
-                <MenuItem
-                  label="Perfil"
-                  sublabel="Preferencias, logout, borrar cuenta"
-                  onClick={goProfile}
-                  icon={<span className="text-blue-600">👤</span>}
-                />
-
-                {/* (Opcional) mini bloque de preferencias rápidas, si lo quieres en menu */}
-                <div className="mt-3 rounded-2xl border border-black/5 bg-white p-3">
-                  <div className="text-xs font-semibold text-gray-600 mb-2">Preferencias rápidas</div>
-
-                  <div className="flex items-center gap-2 text-sm mb-2">
-                    <label className="w-28 text-gray-600">Modo:</label>
-                    <select
-                      className="border rounded-md px-2 py-1 flex-1 bg-white"
-                      value={prefs?.defaultProfile ?? 'driving-car'}
-                      onChange={(e) => setDefaultProfile(e.target.value as Preferences['defaultProfile'])}
-                    >
-                      <option value="driving-car">Automóvil</option>
-                      <option value="cycling-regular">Bicicleta</option>
-                      <option value="foot-walking">A pie</option>
-                    </select>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-sm">
-                    <label className="w-28 text-gray-600">Combustible:</label>
-                    <select
-                      className="border rounded-md px-2 py-1 flex-1 bg-white"
-                      value={prefs?.defaultFuelType ?? 'gasoline95'}
-                      onChange={(e) => setDefaultFuelType(e.target.value as FuelType)}
-                    >
-                      <option value="gasoline95">Gasolina 95</option>
-                      <option value="gasoline98">Gasolina 98</option>
-                      <option value="diesel">Diésel</option>
-                    </select>
-                  </div>
+                <div className="text-sm font-medium">Quick save</div>
+                <div className="flex gap-2">
+                  <button
+                    className="px-3 py-2 rounded-xl bg-black text-white text-sm disabled:opacity-40"
+                    onClick={() => vm.saveOrigin()}
+                    disabled={!vm.canSaveOrigin}
+                    type="button"
+                  >
+                    Save A
+                  </button>
+                  <button
+                    className="px-3 py-2 rounded-xl bg-black text-white text-sm disabled:opacity-40"
+                    onClick={() => vm.saveDestination()}
+                    disabled={!vm.canSaveDestination}
+                    type="button"
+                  >
+                    Save B
+                  </button>
+                  <button
+                    className="px-3 py-2 rounded-xl bg-black text-white text-sm disabled:opacity-40"
+                    onClick={() => vm.saveRoute()}
+                    disabled={!vm.canSaveRoute}
+                    type="button"
+                  >
+                    Save route
+                  </button>
                 </div>
               </div>
-            )}
 
-            {/* SAVED view */}
-            {view === 'saved' && (
-              <div className="space-y-4">
-                {/* Quick save actions (Figma-ish) */}
-                <div className="rounded-2xl border border-black/5 bg-white p-3">
-                  <div className="text-sm font-semibold mb-2">Guardar rápido</div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      className="px-3 py-2 rounded-xl bg-blue-600 text-white disabled:opacity-40"
-                      onClick={saveCurrentOrigin}
-                      disabled={!currentOrigin}
-                      type="button"
-                    >
-                      Guardar A
-                    </button>
-                    <button
-                      className="px-3 py-2 rounded-xl bg-blue-600 text-white disabled:opacity-40"
-                      onClick={saveCurrentDestination}
-                      disabled={!currentDestination}
-                      type="button"
-                    >
-                      Guardar B
-                    </button>
-                    <button
-                      className="px-3 py-2 rounded-xl bg-blue-600 text-white disabled:opacity-40"
-                      onClick={saveCurrentRoute}
-                      disabled={!currentRoute}
-                      type="button"
-                    >
-                      Guardar ruta
-                    </button>
-                  </div>
-                </div>
-
-                {/* Places */}
-                <div className="rounded-2xl border border-black/5 bg-white p-3">
-                  <div className="text-sm font-semibold mb-2">Ubicaciones guardadas</div>
-                  <ul className="max-h-40 overflow-auto divide-y">
-                    {places.map((p) => (
-                      <li key={p.id} className="py-2 text-sm flex items-center justify-between gap-2">
-                        <div className="truncate">{p.label}</div>
-                        <button className="text-red-600 hover:underline" onClick={() => removePlaceItem(p.id)} type="button">
-                          Borrar
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Ubicaciones guardadas</div>
+                <div className="rounded-xl border border-black/10 overflow-hidden">
+                  <ul className="max-h-40 overflow-auto divide-y divide-black/10">
+                    {s.places.map((p) => (
+                      <li key={p.id} className="px-3 py-2 flex items-center justify-between gap-2">
+                        <div className="truncate text-sm">{p.label}</div>
+                        <button
+                          className="text-sm text-red-600 hover:underline"
+                          onClick={() => vm.removePlace(p.id)}
+                          type="button"
+                        >
+                          Remove
                         </button>
                       </li>
                     ))}
-                    {places.length === 0 && <div className="text-xs text-gray-500 py-1">No hay ubicaciones guardadas.</div>}
+                    {s.places.length === 0 && (
+                      <li className="px-3 py-2 text-xs text-gray-500">No hay ubicaciones guardadas.</li>
+                    )}
                   </ul>
                 </div>
+              </div>
 
-                {/* Routes */}
-                <div className="rounded-2xl border border-black/5 bg-white p-3">
-                  <div className="text-sm font-semibold mb-2">Rutas guardadas</div>
-                  <ul className="max-h-44 overflow-auto divide-y">
-                    {routes.map((r) => (
-                      <li key={r.id} className="py-2 text-sm">
-                        <div className="truncate">
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Rutas guardadas</div>
+                <div className="rounded-xl border border-black/10 overflow-hidden">
+                  <ul className="max-h-56 overflow-auto divide-y divide-black/10">
+                    {s.routes.map((r) => (
+                      <li key={r.id} className="px-3 py-2">
+                        <div className="text-sm truncate">
                           <b>{r.origin.label}</b> → <b>{r.destination.label}</b>
                         </div>
-                        <div className="text-gray-600 text-xs">
+                        <div className="text-xs text-gray-600">
                           {r.profile} · {r.distanceKm.toFixed(1)} km · {Math.round(r.durationMin)} min
                         </div>
-                        <div className="text-right mt-1">
-                          <button className="text-red-600 hover:underline" onClick={() => removeRouteItem(r.id)} type="button">
-                            Borrar
+                        <div className="pt-1 text-right">
+                          <button
+                            className="text-sm text-red-600 hover:underline"
+                            onClick={() => vm.removeRoute(r.id)}
+                            type="button"
+                          >
+                            Remove
                           </button>
                         </div>
                       </li>
                     ))}
-                    {routes.length === 0 && <div className="text-xs text-gray-500 py-1">No hay rutas guardadas.</div>}
+                    {s.routes.length === 0 && (
+                      <li className="px-3 py-2 text-xs text-gray-500">No hay rutas guardadas.</li>
+                    )}
                   </ul>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* VEHICLES view */}
-            {view === 'vehicles' && (
-              <div className="space-y-4">
-                {/* List */}
-                <div className="rounded-2xl border border-black/5 bg-white p-3">
-                  <div className="text-sm font-semibold mb-2">Vehículos guardados</div>
+          {!s.loading && !s.error && s.section === 'vehicles' && (
+            <div className="space-y-5">
+              <SectionTitle title="Mis vehículos" />
 
-                  <ul className="max-h-40 overflow-auto divide-y">
-                    {vehicles?.map((v) => (
-                      <li key={v.id} className="py-2 text-sm flex items-center justify-between gap-2">
-                        <div className="truncate">
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Agregar vehículo</div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    className="border border-black/10 rounded-xl px-3 py-2 col-span-2 text-sm outline-none"
+                    placeholder="Nombre (p.ej., Golf)"
+                    value={s.vehName}
+                    onChange={(e) => vm.setVehName(e.target.value)}
+                  />
+                  <select
+                    className="border border-black/10 rounded-xl px-3 py-2 text-sm"
+                    value={s.vehFuelType}
+                    onChange={(e) => vm.setVehFuelType(e.target.value as any)}
+                  >
+                    <option value="gasoline95">95</option>
+                    <option value="gasoline98">98</option>
+                    <option value="diesel">Diesel</option>
+                  </select>
+
+                  <input
+                    className="border border-black/10 rounded-xl px-3 py-2 col-span-2 text-sm outline-none"
+                    placeholder="L/100km (p.ej., 6.5)"
+                    value={s.vehLitersPer100}
+                    onChange={(e) => vm.setVehLitersPer100(e.target.value)}
+                    inputMode="decimal"
+                  />
+                  <button
+                    className="rounded-xl bg-black text-white text-sm disabled:opacity-40"
+                    onClick={() => vm.addVehicle()}
+                    disabled={!vm.canAddVehicle}
+                    type="button"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Vehículos guardados</div>
+                <div className="rounded-xl border border-black/10 overflow-hidden">
+                  <ul className="max-h-64 overflow-auto divide-y divide-black/10">
+                    {s.vehicles.map((v) => (
+                      <li key={v.id} className="px-3 py-2 flex items-center justify-between gap-2">
+                        <div className="truncate text-sm">
                           <b>{v.name}</b> — {v.fuelType}, {v.litersPer100} L/100km
                         </div>
                         <button
-                          className="text-red-600 hover:underline"
-                          onClick={() => onRemoveVehicle?.(v.id)}
+                          className="text-sm text-red-600 hover:underline"
+                          onClick={() => vm.removeVehicle(v.id)}
                           type="button"
                         >
-                          Borrar
+                          Remove
                         </button>
                       </li>
                     ))}
-                    {(vehicles?.length ?? 0) === 0 && <div className="text-xs text-gray-500 py-1">No hay vehículos guardados.</div>}
+                    {s.vehicles.length === 0 && (
+                      <li className="px-3 py-2 text-xs text-gray-500">No hay vehículos guardados.</li>
+                    )}
                   </ul>
                 </div>
+              </div>
+            </div>
+          )}
 
-                {/* Add vehicle */}
-                <div className="rounded-2xl bg-blue-600 text-white p-3">
-                  <div className="text-sm font-semibold mb-2">Agregar vehículo</div>
+          {!s.loading && !s.error && s.section === 'preferences' && (
+            <div className="space-y-5">
+              <SectionTitle title="Preferencias" />
 
-                  <div className="space-y-2">
-                    <input
-                      className="w-full rounded-xl px-3 py-2 text-sm text-white-900"
-                      placeholder="Nombre"
-                      value={vehName}
-                      onChange={(e) => setVehName(e.target.value)}
-                    />
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <label className="w-28 text-gray-700">Modo:</label>
+                  <select
+                    className="border border-black/10 rounded-xl px-3 py-2 flex-1"
+                    value={s.prefs?.defaultProfile ?? 'driving-car'}
+                    onChange={(e) => vm.setDefaultProfile(e.target.value as any)}
+                  >
+                    <option value="driving-car">Automóvil</option>
+                    <option value="cycling-regular">Bicicleta</option>
+                    <option value="foot-walking">A pie</option>
+                  </select>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <select
-                        className="w-full rounded-xl px-3 py-2 text-sm text-white-900"
-                        value={vehFuelType}
-                        onChange={(e) => setVehFuelType(e.target.value as FuelType)}
-                      >
-                        <option value="gasoline95">Gasolina 95</option>
-                        <option value="gasoline98">Gasolina 98</option>
-                        <option value="diesel">Diésel</option>
-                      </select>
-
-                      <input
-                        className="w-full rounded-xl px-3 py-2 text-sm text-white-900"
-                        placeholder="L/100km (ej: 6.5)"
-                        value={vehLitersPer100}
-                        onChange={(e) => setVehLitersPer100(e.target.value)}
-                        inputMode="decimal"
-                      />
-                    </div>
-
-                    <button
-                      className="w-full rounded-xl py-2 bg-white text-blue-700 font-semibold disabled:opacity-60"
-                      onClick={handleAddVehicle}
-                      disabled={
-                        !vehName.trim() ||
-                        !Number.isFinite(vehLitersParsed) ||
-                        vehLitersParsed <= 0 ||
-                        !onAddVehicle
-                      }
-                      type="button"
-                    >
-                      Agregar
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <label className="w-28 text-gray-700">Combustible:</label>
+                  <select
+                    className="border border-black/10 rounded-xl px-3 py-2 flex-1"
+                    value={s.prefs?.defaultFuelType ?? 'gasoline95'}
+                    onChange={(e) => vm.setDefaultFuelType(e.target.value as any)}
+                  >
+                    <option value="gasoline95">Gasolina 95</option>
+                    <option value="gasoline98">Gasolina 98</option>
+                    <option value="diesel">Diesel</option>
+                  </select>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </aside>
-    </>
+    </div>
   );
+}
+
+function MenuButton({
+  title,
+  onClick,
+  disabled,
+}: {
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      className="w-full text-left px-4 py-3 rounded-2xl border border-black/10 hover:bg-black/5 disabled:opacity-50 disabled:hover:bg-transparent"
+      onClick={onClick}
+      disabled={disabled}
+      type="button"
+    >
+      <div className="text-sm font-medium">{title}</div>
+    </button>
+  );
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return <div className="text-base font-semibold">{title}</div>;
 }

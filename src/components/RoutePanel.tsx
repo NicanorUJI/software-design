@@ -11,7 +11,7 @@ interface Props {
   loading: boolean;
   error: string | null;
 
-  onRouteClick: () => void; // lo dejamos por compatibilidad si lo usas en otro sitio
+  onRouteClick: () => void;
   originLabel: string;
   destinationLabel: string;
 
@@ -25,10 +25,7 @@ interface Props {
   fuelType?: FuelType;
   onFuelTypeChange?: (t: FuelType) => void;
 
-  // NEW
   onClose?: () => void;
-
-  // Si ya lo estabas usando
   showCalculateButton?: boolean;
 }
 
@@ -57,7 +54,7 @@ export default function RoutePanel(props: Props) {
 
   return (
     <div className="bg-white/95 backdrop-blur shadow-xl rounded-2xl p-4 space-y-3 border border-black/5">
-      {/* Header con botón cerrar */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="text-lg font-semibold">Route</div>
 

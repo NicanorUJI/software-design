@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { PlaceSuggestion } from '../types/route';
-import { getRoutingService } from '../services/serviceRegistry';
-
-type Field = 'origin' | 'destination';
+// src/components/SearchBar.tsx
+import { useEffect, useRef } from 'react';
+import { useViewModel } from '../viewModels/base/useViewModel';
+import type { SearchBarViewModel } from '../viewModels/SearchBarViewModel';
 
 interface Props {
-  onSelectA: (p: PlaceSuggestion) => void;
-  onSelectB: (p: PlaceSuggestion) => void;
+  vm: SearchBarViewModel;
 
   originLabel?: string;
   destinationLabel?: string;
@@ -14,13 +12,16 @@ interface Props {
   onCalculateRoute: () => void;
   canCalculateRoute: boolean;
   loading: boolean;
+
+  // error del cálculo de ruta (del VM principal)
   error?: string | null;
+
+  // para resetear desde fuera (ej: al cerrar RoutePanel)
   resetKey?: number;
 }
 
 export default function SearchBar({
-  onSelectA,
-  onSelectB,
+  vm,
   originLabel,
   destinationLabel,
   onCalculateRoute,
@@ -29,84 +30,34 @@ export default function SearchBar({
   error,
   resetKey,
 }: Props) {
-  const [originQuery, setOriginQuery] = useState('');
-  const [destQuery, setDestQuery] = useState('');
-  const [activeField, setActiveField] = useState<Field>('origin');
-
-  const [results, setResults] = useState<PlaceSuggestion[]>([]);
-  const [open, setOpen] = useState(false);
-
+  const s = useViewModel(vm);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Reset externo
   useEffect(() => {
-    setOriginQuery('');
-    setDestQuery('');
-    setResults([]);
-    setOpen(false);
-    setActiveField('origin');
-  }, [resetKey]);
+    if (resetKey === undefined) return;
+    vm.reset();
+  }, [resetKey, vm]);
 
+  // Cerrar dropdown si clic fuera
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (!containerRef.current) return;
-      if (!containerRef.current.contains(e.target as Node)) setOpen(false);
+      if (!containerRef.current.contains(e.target as Node)) vm.closeDropdown();
     };
     document.addEventListener('click', onClick);
     return () => document.removeEventListener('click', onClick);
-  }, []);
+  }, [vm]);
 
-  // Debounce
-  useEffect(() => {
-    const q = (activeField === 'origin' ? originQuery : destQuery).trim();
-
-    const id = setTimeout(async () => {
-      if (q.length < 2) {
-        setResults([]);
-        setOpen(false);
-        return;
-      }
-
-      try {
-        const routing = getRoutingService();
-        const r = await routing.geocodeSearch(q);
-        setResults(r);
-        setOpen(true);
-      } catch {
-        setResults([]);
-        setOpen(false);
-      }
-    }, 200);
-
-    return () => clearTimeout(id);
-  }, [activeField, originQuery, destQuery]);
-
-  const pick = (p: PlaceSuggestion) => {
-    if (activeField === 'origin') {
-      onSelectA(p);
-      setOriginQuery('');
-      // UX: saltar automáticamente al destino
-      setActiveField('destination');
-    } else {
-      onSelectB(p);
-      setDestQuery('');
-    }
-
-    setResults([]);
-    setOpen(false);
-  };
-
-  const activePlaceholder = useMemo(() => {
-    return activeField === 'origin' ? 'Origen' : 'Destino';
-  }, [activeField]);
+  // Error a mostrar: prioriza el error de ruta, luego el de búsqueda
+  const uiError = error ?? s.error;
 
   return (
-    <div
-      ref={containerRef}
-      className="w-[640px] max-w-[92vw]"
-    >
+    <div ref={containerRef} className="w-[640px] max-w-[92vw]">
       <div className="bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-black/5 overflow-hidden">
+        {/* Inputs + Actions */}
         <div className="flex items-stretch">
-          {/* Inputs column */}
+          {/* Inputs */}
           <div className="flex-1 p-2">
             <div className="rounded-xl bg-black/5 p-2 space-y-2">
               {/* Origin */}
@@ -116,13 +67,10 @@ export default function SearchBar({
 
                 <input
                   className="flex-1 bg-transparent outline-none text-sm"
-                  placeholder="Origen"
-                  value={activeField === 'origin' && originQuery ? originQuery : (originLabel ?? originQuery)}
-                  onChange={(e) => {
-                    setActiveField('origin');
-                    setOriginQuery(e.target.value);
-                  }}
-                  onFocus={() => setActiveField('origin')}
+                  placeholder="Start location"
+                  value={s.activeField === 'origin' && s.originQuery ? s.originQuery : (originLabel ?? s.originQuery)}
+                  onFocus={() => vm.setActiveField('origin')}
+                  onChange={(e) => vm.setOriginQuery(e.target.value)}
                 />
               </div>
 
@@ -136,19 +84,16 @@ export default function SearchBar({
 
                 <input
                   className="flex-1 bg-transparent outline-none text-sm"
-                  placeholder="Destino"
-                  value={activeField === 'destination' && destQuery ? destQuery : (destinationLabel ?? destQuery)}
-                  onChange={(e) => {
-                    setActiveField('destination');
-                    setDestQuery(e.target.value);
-                  }}
-                  onFocus={() => setActiveField('destination')}
+                  placeholder="Destination"
+                  value={s.activeField === 'destination' && s.destinationQuery ? s.destinationQuery : (destinationLabel ?? s.destinationQuery)}
+                  onFocus={() => vm.setActiveField('destination')}
+                  onChange={(e) => vm.setDestinationQuery(e.target.value)}
                 />
               </div>
             </div>
           </div>
 
-          {/* Actions column */}
+          {/* Actions */}
           <div className="p-2 flex flex-col gap-2">
             {/* Calculate */}
             <button
@@ -169,13 +114,13 @@ export default function SearchBar({
         </div>
 
         {/* Dropdown */}
-        {open && results.length > 0 && (
+        {s.open && s.suggestions.length > 0 && (
           <div className="border-t border-black/5">
-            {results.map((r) => (
+            {s.suggestions.map((r) => (
               <button
                 key={`${r.label}-${r.position.lat}-${r.position.lng}`}
                 className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
-                onClick={() => pick(r)}
+                onClick={() => vm.selectSuggestion(r)}
                 type="button"
               >
                 {r.label}
@@ -184,17 +129,18 @@ export default function SearchBar({
           </div>
         )}
 
-        {/* Hint / error */}
-        {(!open || results.length === 0) && (originQuery.trim().length >= 2 || destQuery.trim().length >= 2) && (
+        {/* Searching / empty feedback (opcional) */}
+        {s.searching && (
           <div className="px-3 pb-2 text-xs text-gray-500">
-            {open ? 'No results.' : `Searching… (${activePlaceholder})`}
+            Searching…
           </div>
         )}
       </div>
 
-      {error && (
+      {/* Error UI */}
+      {uiError && (
         <div className="mt-2 bg-white/95 rounded-2xl shadow-xl border border-red-200 px-3 py-2 text-sm text-red-700">
-          {error}
+          {uiError}
         </div>
       )}
     </div>
