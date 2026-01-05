@@ -44,6 +44,7 @@ export default function MapLayout() {
   const trip = useViewModel(tripVm);
 
   useEffect(() => {
+    void tripVm.init();
     return () => tripVm.dispose();
   }, [tripVm]);
 
